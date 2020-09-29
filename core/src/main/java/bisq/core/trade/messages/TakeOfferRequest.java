@@ -41,7 +41,7 @@ import javax.annotation.Nullable;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class InputsForDepositTxRequest extends TradeMessage implements DirectMessage {
+public final class TakeOfferRequest extends TradeMessage implements DirectMessage {
     private final NodeAddress senderNodeAddress;
     private final long tradeAmount;
     private final long tradePrice;
@@ -66,37 +66,35 @@ public final class InputsForDepositTxRequest extends TradeMessage implements Dir
     private final NodeAddress mediatorNodeAddress;
     private final NodeAddress refundAgentNodeAddress;
 
-    // added in v 0.6. can be null if we trade with an older peer
-    @Nullable
     private final byte[] accountAgeWitnessSignatureOfOfferId;
     private final long currentDate;
 
-    public InputsForDepositTxRequest(String tradeId,
-                                     NodeAddress senderNodeAddress,
-                                     long tradeAmount,
-                                     long tradePrice,
-                                     long txFee,
-                                     long takerFee,
-                                     boolean isCurrencyForTakerFeeBtc,
-                                     List<RawTransactionInput> rawTransactionInputs,
-                                     long changeOutputValue,
-                                     @Nullable String changeOutputAddress,
-                                     byte[] takerMultiSigPubKey,
-                                     String takerPayoutAddressString,
-                                     PubKeyRing takerPubKeyRing,
-                                     PaymentAccountPayload takerPaymentAccountPayload,
-                                     String takerAccountId,
-                                     String takerFeeTxId,
-                                     List<NodeAddress> acceptedArbitratorNodeAddresses,
-                                     List<NodeAddress> acceptedMediatorNodeAddresses,
-                                     List<NodeAddress> acceptedRefundAgentNodeAddresses,
-                                     NodeAddress arbitratorNodeAddress,
-                                     NodeAddress mediatorNodeAddress,
-                                     NodeAddress refundAgentNodeAddress,
-                                     String uid,
-                                     int messageVersion,
-                                     @Nullable byte[] accountAgeWitnessSignatureOfOfferId,
-                                     long currentDate) {
+    public TakeOfferRequest(String tradeId,
+                            NodeAddress senderNodeAddress,
+                            long tradeAmount,
+                            long tradePrice,
+                            long txFee,
+                            long takerFee,
+                            boolean isCurrencyForTakerFeeBtc,
+                            List<RawTransactionInput> rawTransactionInputs,
+                            long changeOutputValue,
+                            @Nullable String changeOutputAddress,
+                            byte[] takerMultiSigPubKey,
+                            String takerPayoutAddressString,
+                            PubKeyRing takerPubKeyRing,
+                            PaymentAccountPayload takerPaymentAccountPayload,
+                            String takerAccountId,
+                            String takerFeeTxId,
+                            List<NodeAddress> acceptedArbitratorNodeAddresses,
+                            List<NodeAddress> acceptedMediatorNodeAddresses,
+                            List<NodeAddress> acceptedRefundAgentNodeAddresses,
+                            @Nullable NodeAddress arbitratorNodeAddress,
+                            NodeAddress mediatorNodeAddress,
+                            NodeAddress refundAgentNodeAddress,
+                            String uid,
+                            int messageVersion,
+                            byte[] accountAgeWitnessSignatureOfOfferId,
+                            long currentDate) {
         super(messageVersion, tradeId, uid);
         this.senderNodeAddress = senderNodeAddress;
         this.tradeAmount = tradeAmount;
@@ -155,19 +153,18 @@ public final class InputsForDepositTxRequest extends TradeMessage implements Dir
                         .map(NodeAddress::toProtoMessage).collect(Collectors.toList()))
                 .setMediatorNodeAddress(mediatorNodeAddress.toProtoMessage())
                 .setRefundAgentNodeAddress(refundAgentNodeAddress.toProtoMessage())
-                .setUid(uid);
+                .setUid(uid)
+                .setAccountAgeWitnessSignatureOfOfferId(ByteString.copyFrom(accountAgeWitnessSignatureOfOfferId))
+                .setCurrentDate(currentDate);
 
         Optional.ofNullable(changeOutputAddress).ifPresent(builder::setChangeOutputAddress);
-        Optional.ofNullable(accountAgeWitnessSignatureOfOfferId).ifPresent(e -> builder.setAccountAgeWitnessSignatureOfOfferId(ByteString.copyFrom(e)));
         Optional.ofNullable(arbitratorNodeAddress).ifPresent(e -> builder.setArbitratorNodeAddress(arbitratorNodeAddress.toProtoMessage()));
-        builder.setCurrentDate(currentDate);
-
         return getNetworkEnvelopeBuilder().setInputsForDepositTxRequest(builder).build();
     }
 
-    public static InputsForDepositTxRequest fromProto(protobuf.InputsForDepositTxRequest proto,
-                                                      CoreProtoResolver coreProtoResolver,
-                                                      int messageVersion) {
+    public static TakeOfferRequest fromProto(protobuf.InputsForDepositTxRequest proto,
+                                             CoreProtoResolver coreProtoResolver,
+                                             int messageVersion) {
         List<RawTransactionInput> rawTransactionInputs = proto.getRawTransactionInputsList().stream()
                 .map(rawTransactionInput -> new RawTransactionInput(rawTransactionInput.getIndex(),
                         rawTransactionInput.getParentTransaction().toByteArray(), rawTransactionInput.getValue()))
@@ -179,7 +176,7 @@ public final class InputsForDepositTxRequest extends TradeMessage implements Dir
         List<NodeAddress> acceptedRefundAgentNodeAddresses = proto.getAcceptedRefundAgentNodeAddressesList().stream()
                 .map(NodeAddress::fromProto).collect(Collectors.toList());
 
-        return new InputsForDepositTxRequest(proto.getTradeId(),
+        return new TakeOfferRequest(proto.getTradeId(),
                 NodeAddress.fromProto(proto.getSenderNodeAddress()),
                 proto.getTradeAmount(),
                 proto.getTradePrice(),

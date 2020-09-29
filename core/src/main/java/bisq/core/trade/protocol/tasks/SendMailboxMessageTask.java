@@ -15,66 +15,86 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.core.trade.protocol.tasks.buyer;
+package bisq.core.trade.protocol.tasks;
 
 import bisq.core.trade.Trade;
-import bisq.core.trade.messages.DelayedPayoutTxSignatureResponse;
-import bisq.core.trade.protocol.tasks.TradeTask;
+import bisq.core.trade.messages.TradeMessage;
 
 import bisq.network.p2p.NodeAddress;
-import bisq.network.p2p.SendDirectMessageListener;
+import bisq.network.p2p.SendMailboxMessageListener;
 
 import bisq.common.taskrunner.TaskRunner;
 
-import java.util.UUID;
-
 import lombok.extern.slf4j.Slf4j;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 @Slf4j
-public class BuyerSendsDelayedPayoutTxSignatureResponse extends TradeTask {
-    public BuyerSendsDelayedPayoutTxSignatureResponse(TaskRunner<Trade> taskHandler, Trade trade) {
+public abstract class SendMailboxMessageTask extends TradeTask {
+    public SendMailboxMessageTask(TaskRunner<Trade> taskHandler, Trade trade) {
         super(taskHandler, trade);
     }
+
+    protected abstract TradeMessage getMessage(String id);
+
+    protected abstract void setStateSent();
+
+    protected abstract void setStateArrived();
+
+    protected abstract void setStateStoredInMailbox();
+
+    protected abstract void setStateFault();
 
     @Override
     protected void run() {
         try {
             runInterceptHook();
-
-            byte[] delayedPayoutTxSignature = checkNotNull(processModel.getDelayedPayoutTxSignature());
-            DelayedPayoutTxSignatureResponse message = new DelayedPayoutTxSignatureResponse(UUID.randomUUID().toString(),
-                    processModel.getOfferId(),
-                    processModel.getMyNodeAddress(),
-                    delayedPayoutTxSignature);
-
+            String id = processModel.getOfferId();
+            TradeMessage message = getMessage(id);
+            setStateSent();
             NodeAddress peersNodeAddress = trade.getTradingPeerNodeAddress();
             log.info("Send {} to peer {}. tradeId={}, uid={}",
                     message.getClass().getSimpleName(), peersNodeAddress, message.getTradeId(), message.getUid());
-            processModel.getP2PService().sendEncryptedDirectMessage(
+
+            processModel.getP2PService().sendEncryptedMailboxMessage(
                     peersNodeAddress,
                     processModel.getTradingPeer().getPubKeyRing(),
                     message,
-                    new SendDirectMessageListener() {
+                    new SendMailboxMessageListener() {
                         @Override
                         public void onArrived() {
                             log.info("{} arrived at peer {}. tradeId={}, uid={}",
                                     message.getClass().getSimpleName(), peersNodeAddress, message.getTradeId(), message.getUid());
+                            setStateArrived();
                             complete();
+                        }
+
+                        @Override
+                        public void onStoredInMailbox() {
+                            log.info("{} stored in mailbox for peer {}. tradeId={}, uid={}",
+                                    message.getClass().getSimpleName(), peersNodeAddress, message.getTradeId(), message.getUid());
+                            SendMailboxMessageTask.this.onStoredInMailbox();
                         }
 
                         @Override
                         public void onFault(String errorMessage) {
                             log.error("{} failed: Peer {}. tradeId={}, uid={}, errorMessage={}",
                                     message.getClass().getSimpleName(), peersNodeAddress, message.getTradeId(), message.getUid(), errorMessage);
-                            appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
-                            failed(errorMessage);
+                            SendMailboxMessageTask.this.onFault(errorMessage, message);
                         }
                     }
             );
         } catch (Throwable t) {
             failed(t);
         }
+    }
+
+    protected void onStoredInMailbox() {
+        setStateStoredInMailbox();
+        complete();
+    }
+
+    protected void onFault(String errorMessage, TradeMessage message) {
+        setStateFault();
+        appendToErrorMessage("Sending message failed: message=" + message + "\nerrorMessage=" + errorMessage);
+        failed(errorMessage);
     }
 }
