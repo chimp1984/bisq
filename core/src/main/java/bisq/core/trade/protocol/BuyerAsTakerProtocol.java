@@ -82,7 +82,6 @@ public class BuyerAsTakerProtocol extends BuyerProtocol implements TakerProtocol
                 .with(TakerEvent.TAKE_OFFER))
                 .setup(tasks(
                         ApplyFilter.class,
-                        getVerifyPeersFeePaymentClass(),
                         CreateTakerFeeTx.class,
                         BuyerAsTakerCreatesDepositTxInputs.class,
                         TakerSendInputsForDepositTxRequest.class)

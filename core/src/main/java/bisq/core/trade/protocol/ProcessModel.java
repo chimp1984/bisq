@@ -18,6 +18,7 @@
 package bisq.core.trade.protocol;
 
 import bisq.core.account.witness.AccountAgeWitnessService;
+import bisq.core.btc.explorer.TxLookupService;
 import bisq.core.btc.model.RawTransactionInput;
 import bisq.core.btc.wallet.BsqWalletService;
 import bisq.core.btc.wallet.BtcWalletService;
@@ -379,5 +380,9 @@ public class ProcessModel implements Model, PersistablePayload {
 
     public DaoFacade getDaoFacade() {
         return provider.getDaoFacade();
+    }
+
+    public TxLookupService getTxLookupService() {
+        return provider.getTxLookupService();
     }
 }

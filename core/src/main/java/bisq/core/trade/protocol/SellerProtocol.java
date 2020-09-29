@@ -126,7 +126,6 @@ public abstract class SellerProtocol extends DisputeProtocol {
                 .preCondition(notDisputed()))
                 .setup(tasks(
                         ApplyFilter.class,
-                        getVerifyPeersFeePaymentClass(),
                         SellerSignAndFinalizePayoutTx.class,
                         SellerBroadcastPayoutTx.class,
                         SellerSendPayoutTxPublishedMessage.class)

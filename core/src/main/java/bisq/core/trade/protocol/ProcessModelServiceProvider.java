@@ -18,6 +18,7 @@
 package bisq.core.trade.protocol;
 
 import bisq.core.account.witness.AccountAgeWitnessService;
+import bisq.core.btc.explorer.TxLookupService;
 import bisq.core.btc.wallet.BsqWalletService;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.TradeWalletService;
@@ -56,6 +57,7 @@ public class ProcessModelServiceProvider {
     private final MediatorManager mediatorManager;
     private final RefundAgentManager refundAgentManager;
     private final KeyRing keyRing;
+    private final TxLookupService txLookupService;
 
     @Inject
     public ProcessModelServiceProvider(OpenOfferManager openOfferManager,
@@ -72,7 +74,8 @@ public class ProcessModelServiceProvider {
                                        ArbitratorManager arbitratorManager,
                                        MediatorManager mediatorManager,
                                        RefundAgentManager refundAgentManager,
-                                       KeyRing keyRing) {
+                                       KeyRing keyRing,
+                                       TxLookupService txLookupService) {
 
         this.openOfferManager = openOfferManager;
         this.p2PService = p2PService;
@@ -89,5 +92,6 @@ public class ProcessModelServiceProvider {
         this.mediatorManager = mediatorManager;
         this.refundAgentManager = refundAgentManager;
         this.keyRing = keyRing;
+        this.txLookupService = txLookupService;
     }
 }

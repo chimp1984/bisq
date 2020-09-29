@@ -126,7 +126,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
         addGroup("SellerAsTakerProtocol",
                 FXCollections.observableArrayList(Arrays.asList(
                         ApplyFilter.class,
-                        TakerVerifyMakerFeePayment.class,
                         CreateTakerFeeTx.class,
                         SellerAsTakerCreatesDepositTxInputs.class,
                         TakerSendInputsForDepositTxRequest.class,
@@ -152,7 +151,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         TakerVerifyMakerFeePayment.class,
 
                         ApplyFilter.class,
-                        TakerVerifyMakerFeePayment.class,
                         SellerSignAndFinalizePayoutTx.class,
                         SellerBroadcastPayoutTx.class,
                         SellerSendPayoutTxPublishedMessage.class
@@ -164,7 +162,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         MakerProcessesInputsForDepositTxRequest.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        MakerVerifyTakerFeePayment.class,
                         MakerSetsLockTime.class,
                         MakerCreateAndSignContract.class,
                         BuyerAsMakerCreatesAndSignsDepositTx.class,
@@ -195,7 +192,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
         addGroup("BuyerAsTakerProtocol",
                 FXCollections.observableArrayList(Arrays.asList(
                         ApplyFilter.class,
-                        TakerVerifyMakerFeePayment.class,
                         CreateTakerFeeTx.class,
                         BuyerAsTakerCreatesDepositTxInputs.class,
                         TakerSendInputsForDepositTxRequest.class,
@@ -231,7 +227,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         MakerProcessesInputsForDepositTxRequest.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        MakerVerifyTakerFeePayment.class,
                         MakerSetsLockTime.class,
                         MakerCreateAndSignContract.class,
                         SellerAsMakerCreatesUnsignedDepositTx.class,
@@ -255,7 +250,6 @@ public class DebugView extends InitializableView<GridPane, Void> {
                         MakerVerifyTakerFeePayment.class,
 
                         ApplyFilter.class,
-                        MakerVerifyTakerFeePayment.class,
                         SellerSignAndFinalizePayoutTx.class,
                         SellerBroadcastPayoutTx.class,
                         SellerSendPayoutTxPublishedMessage.class

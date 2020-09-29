@@ -24,6 +24,8 @@ import bisq.common.taskrunner.TaskRunner;
 
 import lombok.extern.slf4j.Slf4j;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 @Slf4j
 public class TakerVerifyMakerFeePayment extends TradeTask {
     public TakerVerifyMakerFeePayment(TaskRunner<Trade> taskHandler, Trade trade) {
@@ -34,12 +36,15 @@ public class TakerVerifyMakerFeePayment extends TradeTask {
     protected void run() {
         try {
             runInterceptHook();
-            //TODO impl. missing
-            // int numOfPeersSeenTx = processModel.getWalletService().getNumOfPeersSeenTx(processModel.getTakeOfferFeeTxId().getHashAsString());
-       /* if (numOfPeersSeenTx > 2) {
-            resultHandler.handleResult();
-        }*/
-            complete();
+
+            processModel.getTxLookupService().startRequests(checkNotNull(trade.getOffer()).getOfferFeePaymentTxId(),
+                    txLookupResult -> {
+                        if (txLookupResult.isFeeTx()) {
+                            complete();
+                        } else {
+                            failed("The taker fee tx is not confirmed, which is not possible if the fee was paid.");
+                        }
+                    });
         } catch (Throwable t) {
             failed(t);
         }

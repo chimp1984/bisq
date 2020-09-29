@@ -73,7 +73,6 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
                         MakerProcessesInputsForDepositTxRequest.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        getVerifyPeersFeePaymentClass(),
                         MakerSetsLockTime.class,
                         MakerCreateAndSignContract.class,
                         BuyerAsMakerCreatesAndSignsDepositTx.class,

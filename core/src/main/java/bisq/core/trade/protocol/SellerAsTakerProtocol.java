@@ -78,7 +78,6 @@ public class SellerAsTakerProtocol extends SellerProtocol implements TakerProtoc
                 .from(trade.getTradingPeerNodeAddress()))
                 .setup(tasks(
                         ApplyFilter.class,
-                        getVerifyPeersFeePaymentClass(),
                         CreateTakerFeeTx.class,
                         SellerAsTakerCreatesDepositTxInputs.class,
                         TakerSendInputsForDepositTxRequest.class)

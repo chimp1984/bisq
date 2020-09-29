@@ -74,7 +74,6 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
                         MakerProcessesInputsForDepositTxRequest.class,
                         ApplyFilter.class,
                         VerifyPeersAccountAgeWitness.class,
-                        getVerifyPeersFeePaymentClass(),
                         MakerSetsLockTime.class,
                         MakerCreateAndSignContract.class,
                         SellerAsMakerCreatesUnsignedDepositTx.class,
