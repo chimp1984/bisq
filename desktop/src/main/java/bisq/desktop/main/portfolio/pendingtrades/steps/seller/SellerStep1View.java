@@ -38,12 +38,18 @@ public class SellerStep1View extends TradeStepView {
 
     @Override
     protected String getInfoBlockTitle() {
-        return Res.get("portfolio.pending.step1.waitForConf");
+        // We show the waiting for confirmation first and once confirmed
+        // we show that we wait for the tx fee validation. If the tx fee is validated we move to step 2.
+        return !trade.isDepositConfirmed() ?
+                Res.get("portfolio.pending.step1.waitForConf") :
+                Res.get("portfolio.pending.step1.waitForPeersFeeTxValidation");
     }
 
     @Override
     protected String getInfoText() {
-        return Res.get("portfolio.pending.step1.info", Res.get("shared.TheBTCBuyer"));
+        return !trade.isDepositConfirmed() ?
+                Res.get("portfolio.pending.step1.info", Res.get("shared.TheBTCBuyer")) :
+                Res.get("portfolio.pending.step1.waitForPeersFeeTxValidation.info");
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////

@@ -17,6 +17,8 @@
 
 package bisq.core.trade;
 
+import bisq.core.btc.explorer.TxLookupResult;
+import bisq.core.btc.explorer.TxLookupService;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.monetary.Price;
@@ -449,6 +451,12 @@ public abstract class Trade implements Tradable, Model {
     // method and a listener interface, but the IntegerProperty seems to be less boilerplate.
     @Getter
     transient final private IntegerProperty assetTxProofResultUpdateProperty = new SimpleIntegerProperty();
+
+    //todo add to PB
+    @Getter
+    private final ObjectProperty<TxLookupResult> makerFeeTxLookupResultProperty = new SimpleObjectProperty<>(TxLookupResult.UNDEFINED);
+    @Getter
+    private final ObjectProperty<TxLookupResult> takerFeeTxLookupResultProperty = new SimpleObjectProperty<>(TxLookupResult.UNDEFINED);
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -1097,6 +1105,46 @@ public abstract class Trade implements Tradable, Model {
 
         checkNotNull(arbitratorBtcPubKey, "ArbitratorPubKey must not be null");
         return arbitratorBtcPubKey;
+    }
+
+    public boolean isTakerFeeValid(TxLookupService txLookupService) {
+        return isTradeFeeValid(takerFeeTxLookupResultProperty, txLookupService);
+    }
+
+    public boolean isMakerFeeValid(TxLookupService txLookupService) {
+        return isTradeFeeValid(makerFeeTxLookupResultProperty, txLookupService);
+    }
+
+    public boolean isTradeFeeValid(ObjectProperty<TxLookupResult> property, TxLookupService txLookupService) {
+        boolean isConfirmedFeeTx = property.get().isConfirmedFeeTx();
+        if (!isConfirmedFeeTx) {
+            txLookupService.startRequests(getTakerFeeTxId(), property::set);
+        }
+        return isConfirmedFeeTx;
+    }
+
+    public boolean isBuyerFeeValid(TxLookupService txLookupService) {
+        return checkNotNull(contract).isBuyerMakerAndSellerTaker() ?
+                isMakerFeeValid(txLookupService) :
+                isTakerFeeValid(txLookupService);
+    }
+
+    public boolean isSellerFeeValid(TxLookupService txLookupService) {
+        return checkNotNull(contract).isBuyerMakerAndSellerTaker() ?
+                isTakerFeeValid(txLookupService) :
+                isMakerFeeValid(txLookupService);
+    }
+
+    public ObjectProperty<TxLookupResult> getBuyerFeeTxLookupResultProperty() {
+        return checkNotNull(contract).isBuyerMakerAndSellerTaker() ?
+                makerFeeTxLookupResultProperty :
+                takerFeeTxLookupResultProperty;
+    }
+
+    public ObjectProperty<TxLookupResult> getSellerFeeTxLookupResultProperty() {
+        return checkNotNull(contract).isBuyerMakerAndSellerTaker() ?
+                takerFeeTxLookupResultProperty :
+                makerFeeTxLookupResultProperty;
     }
 
 

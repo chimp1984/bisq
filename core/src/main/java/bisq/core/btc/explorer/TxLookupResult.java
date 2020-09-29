@@ -32,7 +32,8 @@ public enum TxLookupResult {
     // non fee txs
     TX_FOUND(true),
 
-    FAILED;
+    FAILED,
+    NOT_SUPPORTED_NETWORK; // E.g. regtest
 
     @Nullable
     @Getter
@@ -69,5 +70,9 @@ public enum TxLookupResult {
 
     public boolean isFeeTx() {
         return this == IS_BSQ_FEE_TX || this == IS_BTC_FEE_TX;
+    }
+
+    public boolean isConfirmedFeeTx() {
+        return isFeeTx() && confirmed;
     }
 }

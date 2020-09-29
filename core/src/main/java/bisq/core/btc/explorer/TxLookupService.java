@@ -26,6 +26,7 @@ import javax.inject.Singleton;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import lombok.extern.slf4j.Slf4j;
@@ -37,9 +38,11 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Singleton
 public class TxLookupService {
+    private static final long MIN_BREAK = TimeUnit.SECONDS.toMillis(30);
     private final Socks5ProxyProvider socks5ProxyProvider;
     private final boolean useLocalhostForP2P;
     private final Map<String, TxLookupRequestsPerTxId> servicesByTxId = new HashMap<>();
+    private final Map<String, TxLookupResult> txLookupResultsByTxId = new HashMap<>();
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -68,12 +71,37 @@ public class TxLookupService {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     public void startRequests(String txId, Consumer<TxLookupResult> resultHandler) {
+        if (!Config.baseCurrencyNetwork().isMainnet()) {
+            resultHandler.accept(TxLookupResult.NOT_SUPPORTED_NETWORK);
+            return;
+        }
+
+        // If we started already requests to our services we lookup the cache if we have
+        // a terminal result. If not we check the timestamp of the last request and if
+        // it is in our tolerance frame we start new requests.
+        if ((servicesByTxId.containsKey(txId))) {
+            if (txLookupResultsByTxId.containsKey(txId)) {
+                resultHandler.accept(txLookupResultsByTxId.get(txId));
+                return;
+            } else {
+                TxLookupRequestsPerTxId txLookupRequestsPerTxId = servicesByTxId.get(txId);
+                if (System.currentTimeMillis() - txLookupRequestsPerTxId.started() < MIN_BREAK) {
+                    // We just had a recent request started.
+                    return;
+                } else {
+                    // Stop potentially pending requests, we will start new once below.
+                    txLookupRequestsPerTxId.terminate();
+                }
+            }
+        }
+
         TxLookupRequestsPerTxId service = new TxLookupRequestsPerTxId(socks5ProxyProvider, txId, useLocalhostForP2P);
         servicesByTxId.put(txId, service);
         service.requestFromAllServices(
                 result -> {
                     if (result.isTerminal()) {
                         servicesByTxId.remove(txId);
+                        txLookupResultsByTxId.put(txId, result);
                     }
                     resultHandler.accept(result);
                 },

@@ -43,6 +43,8 @@ class TxLookupRequestsPerTxId {
     private final boolean useLocalhostForP2P;
     private final Set<TxLookupRequest> requests = new HashSet<>();
     private boolean terminated;
+    private long startDate;
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -60,6 +62,7 @@ class TxLookupRequestsPerTxId {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     public void requestFromAllServices(Consumer<TxLookupResult> resultHandler, FaultHandler faultHandler) {
+        startDate = System.currentTimeMillis();
         List<TxLookupServiceInfo> serviceAddresses = useLocalhostForP2P ?
                 TxLookupServiceInfo.BTC_EXPLORER_APIS_CLEAR_NET :
                 TxLookupServiceInfo.BTC_EXPLORER_APIS;
@@ -96,5 +99,9 @@ class TxLookupRequestsPerTxId {
         terminated = true;
         requests.forEach(TxLookupRequest::terminate);
         requests.clear();
+    }
+
+    public long started() {
+        return startDate;
     }
 }

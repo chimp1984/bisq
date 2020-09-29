@@ -23,6 +23,8 @@ import bisq.desktop.util.DisplayUtils;
 import bisq.desktop.util.GUIUtil;
 
 import bisq.core.account.witness.AccountAgeWitnessService;
+import bisq.core.btc.explorer.TxLookupResult;
+import bisq.core.btc.explorer.TxLookupService;
 import bisq.core.btc.wallet.Restrictions;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.locale.Res;
@@ -30,6 +32,8 @@ import bisq.core.network.MessageState;
 import bisq.core.offer.Offer;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.trade.Contract;
+import bisq.core.trade.MakerTrade;
+import bisq.core.trade.SellerTrade;
 import bisq.core.trade.Trade;
 import bisq.core.trade.closed.ClosedTradableManager;
 import bisq.core.user.User;
@@ -41,6 +45,7 @@ import bisq.core.util.validation.BtcAddressValidator;
 import bisq.network.p2p.P2PService;
 
 import bisq.common.ClockWatcher;
+import bisq.common.UserThread;
 import bisq.common.app.DevEnv;
 
 import org.bitcoinj.core.Coin;
@@ -55,6 +60,7 @@ import org.fxmisc.easybind.Subscription;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.value.ChangeListener;
 
 import java.util.Date;
 import java.util.stream.Collectors;
@@ -71,6 +77,7 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
     @Getter
     @Nullable
     private Trade trade;
+    private ChangeListener<TxLookupResult> txLookupResultListener;
 
     interface State {
     }
@@ -100,6 +107,7 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
     public final ClockWatcher clockWatcher;
     @Getter
     private final User user;
+    private final TxLookupService txLookupService;
 
     private final ObjectProperty<BuyerState> buyerState = new SimpleObjectProperty<>();
     private final ObjectProperty<SellerState> sellerState = new SimpleObjectProperty<>();
@@ -122,7 +130,8 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
                                   ClosedTradableManager closedTradableManager,
                                   AccountAgeWitnessService accountAgeWitnessService,
                                   ClockWatcher clockWatcher,
-                                  User user) {
+                                  User user,
+                                  TxLookupService txLookupService) {
         super(dataModel);
 
         this.btcFormatter = btcFormatter;
@@ -133,6 +142,7 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
         this.accountAgeWitnessService = accountAgeWitnessService;
         this.clockWatcher = clockWatcher;
         this.user = user;
+        this.txLookupService = txLookupService;
     }
 
 
@@ -146,6 +156,14 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
         if (messageStateSubscription != null) {
             messageStateSubscription.unsubscribe();
             messageStateSubscription = null;
+        }
+
+        if (trade != null && txLookupResultListener != null) {
+            if (trade instanceof MakerTrade) {
+                trade.getTakerFeeTxLookupResultProperty().removeListener(txLookupResultListener);
+            } else {
+                trade.getMakerFeeTxLookupResultProperty().removeListener(txLookupResultListener);
+            }
         }
     }
 
@@ -420,11 +438,48 @@ public class PendingTradesViewModel extends ActivatableWithDataModel<PendingTrad
                 break;
 
 
-            // buyer and seller step 2
+            // buyer and seller step 2 one fee tx is verified
             // #################### Phase DEPOSIT_CONFIRMED
             case DEPOSIT_CONFIRMED_IN_BLOCK_CHAIN:
-                sellerState.set(SellerState.STEP2);
-                buyerState.set(BuyerState.STEP2);
+                // Once the deposit tx is confirmed we verify the peers fee tx. Only once that is verified we move
+                // to step 2
+                if (trade instanceof SellerTrade) {
+                    if (trade.isBuyerFeeValid(txLookupService)) {
+                        sellerState.set(SellerState.STEP2);
+                        if (txLookupResultListener != null) {
+                            trade.getBuyerFeeTxLookupResultProperty().removeListener(txLookupResultListener);
+                        }
+                        break;
+                    }
+
+                    // We do not move to step 2 before we get the peers fee tx verified
+                    txLookupResultListener = (observable, oldValue, newValue) -> {
+                        if (trade.isBuyerFeeValid(txLookupService)) {
+                            UserThread.execute(() -> trade.getBuyerFeeTxLookupResultProperty().removeListener(txLookupResultListener));
+                            sellerState.set(SellerState.STEP2);
+                        }
+                    };
+                    trade.getBuyerFeeTxLookupResultProperty().addListener(txLookupResultListener);
+                    sellerState.set(SellerState.STEP1);
+                } else {
+                    if (trade.isSellerFeeValid(txLookupService)) {
+                        buyerState.set(BuyerState.STEP2);
+                        if (txLookupResultListener != null) {
+                            trade.getSellerFeeTxLookupResultProperty().removeListener(txLookupResultListener);
+                        }
+                        break;
+                    }
+
+                    // We do not move to step 2 before we get the peers fee tx verified
+                    txLookupResultListener = (observable, oldValue, newValue) -> {
+                        if (trade.isSellerFeeValid(txLookupService)) {
+                            UserThread.execute(() -> trade.getSellerFeeTxLookupResultProperty().removeListener(txLookupResultListener));
+                            buyerState.set(BuyerState.STEP2);
+                        }
+                    };
+                    trade.getSellerFeeTxLookupResultProperty().addListener(txLookupResultListener);
+                    buyerState.set(BuyerState.STEP1);
+                }
                 break;
 
             // buyer step 3
