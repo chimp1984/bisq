@@ -30,6 +30,6 @@ class MemPoolSpaceParser implements TxLookupParser {
 
     TxLookupResult parse(TxLookupModel model, String jsonTxt) {
         //TODO implement
-        return TxLookupResult.IN_MEM_POOL;
+        return TxLookupResult.TX_FOUND;
     }
 }
