@@ -24,15 +24,15 @@ import bisq.core.trade.SellerAsTakerTrade;
 import bisq.core.trade.Trade;
 
 public class TradeProtocolFactory {
-    public static TradeProtocol getNewTradeProtocol(Trade trade) {
+    public static TradeProtocol getNewTradeProtocol(ProcessModelServiceProvider serviceProvider, Trade trade) {
         if (trade instanceof BuyerAsMakerTrade) {
-            return new BuyerAsMakerProtocol((BuyerAsMakerTrade) trade);
+            return new BuyerAsMakerProtocol(serviceProvider, (BuyerAsMakerTrade) trade);
         } else if (trade instanceof BuyerAsTakerTrade) {
-            return new BuyerAsTakerProtocol((BuyerAsTakerTrade) trade);
+            return new BuyerAsTakerProtocol(serviceProvider, (BuyerAsTakerTrade) trade);
         } else if (trade instanceof SellerAsMakerTrade) {
-            return new SellerAsMakerProtocol((SellerAsMakerTrade) trade);
+            return new SellerAsMakerProtocol(serviceProvider, (SellerAsMakerTrade) trade);
         } else if (trade instanceof SellerAsTakerTrade) {
-            return new SellerAsTakerProtocol((SellerAsTakerTrade) trade);
+            return new SellerAsTakerProtocol(serviceProvider, (SellerAsTakerTrade) trade);
         } else {
             throw new IllegalStateException("Trade not of expected type. Trade=" + trade);
         }

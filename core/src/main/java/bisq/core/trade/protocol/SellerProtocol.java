@@ -48,8 +48,8 @@ public abstract class SellerProtocol extends DisputeProtocol {
         PAYMENT_RECEIVED
     }
 
-    public SellerProtocol(SellerTrade trade) {
-        super(trade);
+    public SellerProtocol(ProcessModelServiceProvider serviceProvider, SellerTrade trade) {
+        super(serviceProvider, trade);
     }
 
 

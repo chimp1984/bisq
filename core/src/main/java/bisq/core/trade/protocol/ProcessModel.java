@@ -82,7 +82,6 @@ import javax.annotation.Nullable;
 public class ProcessModel implements Model, PersistablePayload {
     // Transient/Immutable (net set in constructor so they are not final, but at init)
     transient private ProcessModelServiceProvider provider;
-    transient private TradeManager tradeManager;
     transient private Offer offer;
 
     // Transient/Mutable
@@ -173,12 +172,9 @@ public class ProcessModel implements Model, PersistablePayload {
         this.tradingPeer = tradingPeer != null ? tradingPeer : new TradingPeer();
     }
 
-    public void applyTransient(ProcessModelServiceProvider provider,
-                               TradeManager tradeManager,
-                               Offer offer) {
+    public void applyTransient(ProcessModelServiceProvider provider, Offer offer) {
         this.offer = offer;
         this.provider = provider;
-        this.tradeManager = tradeManager;
     }
 
 
@@ -320,6 +316,10 @@ public class ProcessModel implements Model, PersistablePayload {
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Delegates
     ///////////////////////////////////////////////////////////////////////////////////////////
+
+    public TradeManager getTradeManager() {
+        return provider.getTradeManager();
+    }
 
     public BtcWalletService getBtcWalletService() {
         return provider.getBtcWalletService();

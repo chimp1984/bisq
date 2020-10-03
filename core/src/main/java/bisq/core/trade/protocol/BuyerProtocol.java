@@ -52,12 +52,12 @@ public abstract class BuyerProtocol extends DisputeProtocol {
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public BuyerProtocol(BuyerTrade trade) {
-        super(trade);
+    public BuyerProtocol(ProcessModelServiceProvider serviceProvider, BuyerTrade trade) {
+        super(serviceProvider, trade);
     }
 
     @Override
-    protected void onInitialized() {
+    public void onInitialized() {
         super.onInitialized();
         // We get called the constructor with any possible state and phase. As we don't want to log an error for such
         // cases we use the alternative 'given' method instead of 'expect'.

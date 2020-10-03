@@ -51,8 +51,8 @@ public class DisputeProtocol extends TradeProtocol {
         ARBITRATION_REQUESTED
     }
 
-    public DisputeProtocol(Trade trade) {
-        super(trade);
+    public DisputeProtocol(ProcessModelServiceProvider serviceProvider, Trade trade) {
+        super(serviceProvider, trade);
     }
 
     protected boolean notDisputed() {

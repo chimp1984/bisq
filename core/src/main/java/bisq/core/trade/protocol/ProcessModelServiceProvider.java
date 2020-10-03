@@ -27,6 +27,7 @@ import bisq.core.offer.OpenOfferManager;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
 import bisq.core.support.dispute.refund.refundagent.RefundAgentManager;
+import bisq.core.trade.TradeManager;
 import bisq.core.trade.statistics.ReferralIdService;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.User;
@@ -38,6 +39,7 @@ import bisq.common.crypto.KeyRing;
 import javax.inject.Inject;
 
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 public class ProcessModelServiceProvider {
@@ -56,6 +58,12 @@ public class ProcessModelServiceProvider {
     private final MediatorManager mediatorManager;
     private final RefundAgentManager refundAgentManager;
     private final KeyRing keyRing;
+
+    // As we get the ProcessModelServiceProvider injected in TradeManager we cannot add it here as injected param but
+    // use a setter instead. Such circular dependencies should be avoided usually but here it is just a container for
+    // service classes which we need to pass over to an object created from protobuf data.
+    @Setter
+    private TradeManager tradeManager;
 
     @Inject
     public ProcessModelServiceProvider(OpenOfferManager openOfferManager,

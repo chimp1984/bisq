@@ -177,9 +177,9 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         this.dumpDelayedPayoutTx = dumpDelayedPayoutTx;
         this.allowFaultyDelayedTxs = allowFaultyDelayedTxs;
 
-        tradableListStorage = storage;
+        processModelServiceProvider.setTradeManager(this);
 
-        p2PService.addDecryptedDirectMessageListener(this);
+        tradableListStorage = storage;
 
         failedTradesManager.setUnFailTradeCallback(this::unFailTrade);
     }
@@ -263,10 +263,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     btcWalletService,
                     getNewProcessModel(offer));
         }
-        TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
+        TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(processModelServiceProvider, trade);
         tradeProtocolByTradeId.put(trade.getId(), tradeProtocol);
         tradableList.add(trade);
-        initTradeAndProtocol(trade, tradeProtocol);
+        initTradeProtocol(tradeProtocol);
 
         ((MakerProtocol) tradeProtocol).handleTakeOfferRequest(inputsForDepositTxRequest, peer, errorMessage -> {
             if (takeOfferRequestErrorMessageHandler != null)
@@ -300,6 +300,10 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     log.warn("Swapping pending OFFER_FUNDING entries at startup. offerId={}", addressEntry.getOfferId());
                     btcWalletService.swapTradeEntryToAvailableEntry(addressEntry.getOfferId(), AddressEntry.Context.OFFER_FUNDING);
                 });
+
+        // We start listening once we are ready. If we received a request earlier it will be treated like rejected for
+        // the peer, though it is very unlikely that our offer got broadcast that fast, so this can hardly happen anyway.
+        p2PService.addDecryptedDirectMessageListener(this);
     }
 
     public void persistTrades() {
@@ -310,7 +314,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         if (tradeProtocolByTradeId.containsKey(trade.getId())) {
             return tradeProtocolByTradeId.get(trade.getId());
         } else {
-            TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
+            TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(processModelServiceProvider, trade);
             tradeProtocolByTradeId.put(trade.getId(), tradeProtocol);
             return tradeProtocol;
         }
@@ -327,13 +331,12 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     private void initPersistedTrade(Trade trade) {
-        initTradeAndProtocol(trade, getTradeProtocol(trade));
+        initTradeProtocol(getTradeProtocol(trade));
         trade.updateDepositTxFromWallet();
     }
 
-    private void initTradeAndProtocol(Trade trade, TradeProtocol tradeProtocol) {
-        tradeProtocol.initialize(processModelServiceProvider, this, trade.getOffer());
-        trade.initialize(processModelServiceProvider);
+    private void initTradeProtocol(TradeProtocol tradeProtocol) {
+        tradeProtocol.onInitialized();
     }
 
 
@@ -408,11 +411,11 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
                         trade.setTakerPaymentAccountId(paymentAccountId);
 
-                        TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
+                        TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(processModelServiceProvider, trade);
                         tradeProtocolByTradeId.put(trade.getId(), tradeProtocol);
                         tradableList.add(trade);
 
-                        initTradeAndProtocol(trade, tradeProtocol);
+                        initTradeProtocol(tradeProtocol);
 
                         ((TakerProtocol) tradeProtocol).onTakeOffer();
                         tradeResultHandler.handleResult(trade);

@@ -53,8 +53,8 @@ public class BuyerAsMakerProtocol extends BuyerProtocol implements MakerProtocol
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public BuyerAsMakerProtocol(BuyerAsMakerTrade trade) {
-        super(trade);
+    public BuyerAsMakerProtocol(ProcessModelServiceProvider serviceProvider, BuyerAsMakerTrade trade) {
+        super(serviceProvider, trade);
     }
 
 

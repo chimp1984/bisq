@@ -54,8 +54,8 @@ public class SellerAsMakerProtocol extends SellerProtocol implements MakerProtoc
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public SellerAsMakerProtocol(SellerAsMakerTrade trade) {
-        super(trade);
+    public SellerAsMakerProtocol(ProcessModelServiceProvider serviceProvider, SellerAsMakerTrade trade) {
+        super(serviceProvider, trade);
     }
 
 
