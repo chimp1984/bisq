@@ -37,13 +37,9 @@ import bisq.core.payment.RevolutAccount;
 import bisq.core.payment.TradeLimits;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.provider.price.PriceFeedService;
-import bisq.core.support.dispute.arbitration.ArbitrationManager;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
-import bisq.core.support.dispute.mediation.MediationManager;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
-import bisq.core.support.dispute.refund.RefundManager;
 import bisq.core.support.dispute.refund.refundagent.RefundAgentManager;
-import bisq.core.support.traderchat.TraderChatManager;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.trade.txproof.xmr.XmrTxProofService;
@@ -71,10 +67,6 @@ import java.util.stream.Collectors;
 public class DomainInitialisation {
     private final ClockWatcher clockWatcher;
     private final TradeLimits tradeLimits;
-    private final ArbitrationManager arbitrationManager;
-    private final MediationManager mediationManager;
-    private final RefundManager refundManager;
-    private final TraderChatManager traderChatManager;
     private final TradeManager tradeManager;
     private final XmrTxProofService xmrTxProofService;
     private final OpenOfferManager openOfferManager;
@@ -104,10 +96,6 @@ public class DomainInitialisation {
     @Inject
     public DomainInitialisation(ClockWatcher clockWatcher,
                                 TradeLimits tradeLimits,
-                                ArbitrationManager arbitrationManager,
-                                MediationManager mediationManager,
-                                RefundManager refundManager,
-                                TraderChatManager traderChatManager,
                                 TradeManager tradeManager,
                                 XmrTxProofService xmrTxProofService,
                                 OpenOfferManager openOfferManager,
@@ -135,10 +123,6 @@ public class DomainInitialisation {
                                 User user) {
         this.clockWatcher = clockWatcher;
         this.tradeLimits = tradeLimits;
-        this.arbitrationManager = arbitrationManager;
-        this.mediationManager = mediationManager;
-        this.refundManager = refundManager;
-        this.traderChatManager = traderChatManager;
         this.tradeManager = tradeManager;
         this.xmrTxProofService = xmrTxProofService;
         this.openOfferManager = openOfferManager;
@@ -176,11 +160,6 @@ public class DomainInitialisation {
         clockWatcher.start();
 
         tradeLimits.onAllServicesInitialized();
-
-        arbitrationManager.onAllServicesInitialized();
-        mediationManager.onAllServicesInitialized();
-        refundManager.onAllServicesInitialized();
-        traderChatManager.onAllServicesInitialized();
 
         tradeManager.onAllServicesInitialized();
         xmrTxProofService.onAllServicesInitialized();
