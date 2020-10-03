@@ -52,7 +52,6 @@ import bisq.common.crypto.PubKeyRing;
 import bisq.common.proto.ProtobufferException;
 import bisq.common.proto.network.NetworkEnvelope;
 import bisq.common.proto.persistable.PersistedDataHost;
-import bisq.common.util.Tuple2;
 
 import com.google.inject.Inject;
 
@@ -85,11 +84,13 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import lombok.Getter;
+import lombok.Value;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -118,8 +119,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     private final Set<DecryptedDirectMessageListener> decryptedDirectMessageListeners = new CopyOnWriteArraySet<>();
     private final Set<DecryptedMailboxListener> decryptedMailboxListeners = new CopyOnWriteArraySet<>();
     private final Set<P2PServiceListener> p2pServiceListeners = new CopyOnWriteArraySet<>();
-    @Getter
-    private final Map<String, Tuple2<ProtectedMailboxStorageEntry, DecryptedMessageWithPubKey>> mailboxMap = new HashMap<>();
+    private final Map<String, LocalMailBoxMessage> mailboxMap = new HashMap<>();
     @Getter
     private final Set<DecryptedMessageWithPubKey> directMessages = new HashSet<>();
     private final Set<Runnable> shutDownResultHandlers = new CopyOnWriteArraySet<>();
@@ -530,11 +530,18 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
                             prefixedSealedAndSignedMessage.getSealedAndSigned());
                     if (decryptedMessageWithPubKey.getNetworkEnvelope() instanceof MailboxMessage) {
                         MailboxMessage mailboxMessage = (MailboxMessage) decryptedMessageWithPubKey.getNetworkEnvelope();
+
+                        String uid = mailboxMessage.getUid();
+                        if (mailboxMap.containsKey(uid)) {
+                            log.info("We received the same mailbox message with uid {} we had already stored again. We ignore it.", uid);
+                            return;
+                        }
                         NodeAddress senderNodeAddress = mailboxMessage.getSenderNodeAddress();
                         checkNotNull(senderNodeAddress, "senderAddress must not be null for mailbox network_messages");
 
-                        mailboxMap.put(mailboxMessage.getUid(), new Tuple2<>(protectedMailboxStorageEntry, decryptedMessageWithPubKey));
-                        log.info("Received a {} mailbox message with messageUid {} and senderAddress {}", mailboxMessage.getClass().getSimpleName(), mailboxMessage.getUid(), senderNodeAddress);
+                        LocalMailBoxMessage localMailBoxMessage = new LocalMailBoxMessage(protectedMailboxStorageEntry, decryptedMessageWithPubKey);
+                        mailboxMap.put(uid, localMailBoxMessage);
+                        log.info("Received a {} mailbox message with messageUid {} and senderAddress {}", mailboxMessage.getClass().getSimpleName(), uid, senderNodeAddress);
                         decryptedMailboxListeners.forEach(
                                 e -> e.onMailboxMessageAdded(decryptedMessageWithPubKey, senderNodeAddress));
                     } else {
@@ -754,28 +761,34 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         }
 
         String uid = mailboxMessage.getUid();
-        if (mailboxMap.containsKey(uid)) {
-            ProtectedMailboxStorageEntry mailboxData = mailboxMap.get(uid).first;
-            if (mailboxData != null && mailboxData.getProtectedStoragePayload() instanceof MailboxStoragePayload) {
-                MailboxStoragePayload expirableMailboxStoragePayload = (MailboxStoragePayload) mailboxData.getProtectedStoragePayload();
-                PublicKey receiversPubKey = mailboxData.getReceiversPubKey();
-                checkArgument(receiversPubKey.equals(keyRing.getSignatureKeyPair().getPublic()),
-                        "receiversPubKey is not matching with our key. That must not happen.");
-                try {
-                    ProtectedMailboxStorageEntry protectedMailboxStorageEntry = p2PDataStorage.getMailboxDataWithSignedSeqNr(
-                            expirableMailboxStoragePayload,
-                            keyRing.getSignatureKeyPair(),
-                            receiversPubKey);
-                    p2PDataStorage.remove(protectedMailboxStorageEntry, networkNode.getNodeAddress());
-                } catch (CryptoException e) {
-                    log.error("Signing at getDataWithSignedSeqNr failed. That should never happen.");
-                }
-
-                mailboxMap.remove(uid);
-                log.info("Removed successfully decryptedMsgWithPubKey. uid={}", uid);
-            }
-        } else {
+        if (!mailboxMap.containsKey(uid)) {
             log.warn("uid for mailbox entry not found in mailboxMap." + "uid={}", uid);
+            return;
+        }
+
+        ProtectedMailboxStorageEntry mailboxData = mailboxMap.get(uid).getProtectedMailboxStorageEntry();
+        if (mailboxData == null) {
+            return;
+        }
+
+        checkArgument(mailboxData.getProtectedStoragePayload() instanceof MailboxStoragePayload);
+        MailboxStoragePayload payload = (MailboxStoragePayload) mailboxData.getProtectedStoragePayload();
+        PublicKey receiversPubKey = mailboxData.getReceiversPubKey();
+        checkArgument(receiversPubKey.equals(keyRing.getSignatureKeyPair().getPublic()),
+                "receiversPubKey is not matching with our key. That must not happen.");
+        try {
+            ProtectedMailboxStorageEntry protectedMailboxStorageEntry = p2PDataStorage.getMailboxDataWithSignedSeqNr(
+                    payload,
+                    keyRing.getSignatureKeyPair(),
+                    receiversPubKey);
+            p2PDataStorage.remove(protectedMailboxStorageEntry, networkNode.getNodeAddress());
+
+            // We do not delete the entry but set a null value instead. This marks an entry which we have received
+            // and removed and is used when we receive the same message again to avoid that we add it again.
+            mailboxMap.put(mailboxMessage.getUid(), null);
+            log.info("Removed successfully decryptedMsgWithPubKey with uid {}", uid);
+        } catch (CryptoException e) {
+            log.error("Signing at getDataWithSignedSeqNr failed.");
         }
     }
 
@@ -905,6 +918,11 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         return keyRing;
     }
 
+    public Set<DecryptedMessageWithPubKey> getDecryptedMailboxMessagesWithPubKey() {
+        return mailboxMap.values().stream().map(P2PService.LocalMailBoxMessage::getDecryptedMessageWithPubKey).collect(Collectors.toSet());
+    }
+
+
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Private
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -917,6 +935,18 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         } else {
             log.debug("myOnionAddress is null at verifyAddressPrefixHash. That is expected at startup.");
             return false;
+        }
+    }
+
+    @Value
+    public class LocalMailBoxMessage {
+        private final ProtectedMailboxStorageEntry protectedMailboxStorageEntry;
+        private final DecryptedMessageWithPubKey decryptedMessageWithPubKey;
+
+        public LocalMailBoxMessage(ProtectedMailboxStorageEntry protectedMailboxStorageEntry,
+                                   DecryptedMessageWithPubKey decryptedMessageWithPubKey) {
+            this.protectedMailboxStorageEntry = protectedMailboxStorageEntry;
+            this.decryptedMessageWithPubKey = decryptedMessageWithPubKey;
         }
     }
 }

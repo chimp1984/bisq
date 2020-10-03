@@ -85,8 +85,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     public void onInitialized() {
         serviceProvider.getP2PService().addDecryptedMailboxListener(this);
-        serviceProvider.getP2PService().getMailboxMap().values()
-                .stream().map(e -> e.second)
+        serviceProvider.getP2PService().getDecryptedMailboxMessagesWithPubKey()
                 .forEach(this::handleDecryptedMessageWithPubKey);
 
         // In case we received a direct message before we have been initialized we apply it now

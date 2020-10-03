@@ -75,8 +75,7 @@ public abstract class SupportManager implements DecryptedDirectMessageListener, 
         p2PService.addDecryptedDirectMessageListener(this);
 
         p2PService.addDecryptedMailboxListener(this);
-        p2PService.getMailboxMap().values()
-                .stream().map(e -> e.second)
+        p2PService.getDecryptedMailboxMessagesWithPubKey()
                 .forEach(this::onDecryptedMessageWithPubKey);
 
         // In case we received a direct message before we have been initialized we apply it now
