@@ -199,7 +199,7 @@ public abstract class SupportManager implements DecryptedDirectMessageListener, 
             persist();
 
             if (decryptedMessageWithPubKey != null) {
-                p2PService.removeEntryFromMailbox(decryptedMessageWithPubKey);
+                p2PService.removeDecryptedMessageWithPubKey(decryptedMessageWithPubKey);
             }
         }
     }

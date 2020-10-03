@@ -714,7 +714,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         }
     }
 
-    public void removeEntryFromMailbox(DecryptedMessageWithPubKey decryptedMessageWithPubKey) {
+    public void removeDecryptedMessageWithPubKey(DecryptedMessageWithPubKey decryptedMessageWithPubKey) {
         NetworkEnvelope networkEnvelope = decryptedMessageWithPubKey.getNetworkEnvelope();
         if (networkEnvelope instanceof MailboxMessage) {
             removeMailboxMessage((MailboxMessage) networkEnvelope);
