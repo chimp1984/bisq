@@ -409,13 +409,8 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
                     // we get too many connection attempts.
                     connection.setPeerType(Connection.PeerType.DIRECT_MSG_PEER);
 
-                    log.debug("Try to decrypt...");
                     DecryptedMessageWithPubKey decryptedMessageWithPubKey = encryptionService.decryptAndVerify(
                             prefixedSealedAndSignedMessage.getSealedAndSigned());
-
-                    log.debug("\n\nDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n" +
-                            "Decrypted SealedAndSignedMessage:\ndecryptedMsgWithPubKey={}"
-                            + "\nDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n", decryptedMessageWithPubKey);
                     if (connection.getPeersNodeAddressOptional().isPresent()) {
                         directMessages.add(decryptedMessageWithPubKey);
                         decryptedDirectMessageListeners.forEach(
