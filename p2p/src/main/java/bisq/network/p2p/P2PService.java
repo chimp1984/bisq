@@ -731,34 +731,25 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     }
 
     private void removeMailboxMessage(MailboxMessage mailboxMessage) {
-        // TODO use mailboxMap to mark already received messages. Do not remove the entry but replace it with a Null object
-        // At add we can check for that.
-
-        // We need to delay a bit to avoid that we remove our msg then get it from other peers again and reapply it again.
-        // If we delay the removal we have better chances that repeated network_messages we got from other peers are already filtered
-        // at the P2PService layer.
-        // Though we have to check in the client classes to not apply the same message again as there is no guarantee
-        // when we would get a message again from the network.
-
         try {
-            UserThread.runAfter(() -> delayedRemoveMailboxMessage(mailboxMessage), 2);
-        } catch (NetworkNotReadyException t) {
+            doRemoveMailboxMessage(mailboxMessage);
+        } catch (Throwable e) {
             // If we called too early it might throw a NetworkNotReadyException. We will try again
+
+            // This case should not happen as we do not process messages before we are ready. but lets keep it to
+            // not risk issues.
             try {
-                UserThread.runAfter(() -> delayedRemoveMailboxMessage(mailboxMessage), 60);
+                UserThread.runAfter(() -> doRemoveMailboxMessage(mailboxMessage), 60);
             } catch (NetworkNotReadyException ignore) {
                 log.warn("We tried to call delayedRemoveEntryFromMailbox 60 sec. after we received an " +
-                        "NetworkNotReadyException but it failed again. We give up here.");
+                        "NetworkNotReadyException but it failed again. We give up.");
             }
         }
     }
 
-    private void delayedRemoveMailboxMessage(MailboxMessage mailboxMessage) {
-        if (!isBootstrapped()) {
-            // We don't throw an NetworkNotReadyException here.
-            // This case should not happen anyway as we check for isBootstrapped in the callers.
-            log.warn("You must have bootstrapped before adding data to the P2P network.");
-        }
+    private void doRemoveMailboxMessage(MailboxMessage mailboxMessage) {
+        checkArgument(!isBootstrapped,
+                "You must have bootstrapped before removing data from the P2P network.");
 
         String uid = mailboxMessage.getUid();
         if (!mailboxMap.containsKey(uid)) {
@@ -768,6 +759,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
 
         ProtectedMailboxStorageEntry mailboxData = mailboxMap.get(uid).getProtectedMailboxStorageEntry();
         if (mailboxData == null) {
+            log.warn("ProtectedMailboxStorageEntry is null." + "uid={}", uid);
             return;
         }
 
