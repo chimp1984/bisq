@@ -38,8 +38,12 @@ import bisq.common.UserThread;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.proto.network.NetworkEnvelope;
 import bisq.common.taskrunner.Task;
+import bisq.common.util.Tuple2;
 
 import java.security.PublicKey;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,7 +54,10 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
 
     protected final ProcessModel processModel;
     protected final Trade trade;
+    private final Map<String, Tuple2<TradeMessage, NodeAddress>> earlyTradeMessages = new HashMap<>();
+    private final Map<String, Tuple2<AckMessage, NodeAddress>> earlyAckMessages = new HashMap<>();
     private Timer timeoutTimer;
+    private boolean initialized;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +67,13 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     public TradeProtocol(Trade trade) {
         this.trade = trade;
         this.processModel = trade.getProcessModel();
+
+        // We start listening just from the start as it could be that we receive a direct message just after the
+        // p2p service is ready but the trade protocol is not initialized yet. So we cache those potential messages
+        // and apply them once we get initialized.
+        if (!trade.isWithdrawn()) {
+            processModel.getP2PService().addDecryptedDirectMessageListener(this);
+        }
     }
 
 
@@ -73,13 +87,18 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     }
 
     protected void onInitialized() {
-        if (!trade.isWithdrawn()) {
-            processModel.getP2PService().addDecryptedDirectMessageListener(this);
-        }
         processModel.getP2PService().addDecryptedMailboxListener(this);
         processModel.getP2PService().getMailboxMap().values()
                 .stream().map(e -> e.second)
                 .forEach(this::handleDecryptedMessageWithPubKey);
+
+        // In case we received a direct message before we have been initialized we apply it now
+        earlyTradeMessages.values().forEach(tuple -> onTradeMessage(tuple.first, tuple.second));
+        earlyTradeMessages.clear();
+        earlyAckMessages.values().forEach(tuple -> onAckMessage(tuple.first, tuple.second));
+        earlyAckMessages.clear();
+
+        initialized = true;
     }
 
     public void onWithdrawCompleted() {
@@ -99,14 +118,24 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
     @Override
     public void onDirectMessage(DecryptedMessageWithPubKey message, NodeAddress peer) {
         NetworkEnvelope networkEnvelope = message.getNetworkEnvelope();
-        if (networkEnvelope instanceof TradeMessage &&
-                isMyMessage((TradeMessage) networkEnvelope) &&
-                isPubKeyValid(message)) {
-            onTradeMessage((TradeMessage) networkEnvelope, peer);
-        } else if (networkEnvelope instanceof AckMessage &&
-                isMyMessage((AckMessage) networkEnvelope) &&
-                isPubKeyValid(message)) {
-            onAckMessage((AckMessage) networkEnvelope, peer);
+        if (networkEnvelope instanceof TradeMessage) {
+            TradeMessage tradeMessage = (TradeMessage) networkEnvelope;
+            if (isMyMessage(tradeMessage) && isPubKeyValid(message)) {
+                if (initialized) {
+                    onTradeMessage(tradeMessage, peer);
+                } else {
+                    earlyTradeMessages.put(tradeMessage.getUid(), new Tuple2<>(tradeMessage, peer));
+                }
+            }
+        } else if (networkEnvelope instanceof AckMessage) {
+            AckMessage ackMessage = (AckMessage) networkEnvelope;
+            if (isMyMessage(ackMessage) && isPubKeyValid(message)) {
+                if (initialized) {
+                    onAckMessage(ackMessage, peer);
+                } else {
+                    earlyAckMessages.put(ackMessage.getUid(), new Tuple2<>(ackMessage, peer));
+                }
+            }
         }
     }
 
