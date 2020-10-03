@@ -77,6 +77,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -119,6 +120,8 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     private final Set<P2PServiceListener> p2pServiceListeners = new CopyOnWriteArraySet<>();
     @Getter
     private final Map<String, Tuple2<ProtectedMailboxStorageEntry, DecryptedMessageWithPubKey>> mailboxMap = new HashMap<>();
+    @Getter
+    private final Set<DecryptedMessageWithPubKey> directMessages = new HashSet<>();
     private final Set<Runnable> shutDownResultHandlers = new CopyOnWriteArraySet<>();
     private final BooleanProperty hiddenServicePublished = new SimpleBooleanProperty();
     private final BooleanProperty preliminaryDataReceived = new SimpleBooleanProperty();
@@ -413,11 +416,13 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
                     log.debug("\n\nDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n" +
                             "Decrypted SealedAndSignedMessage:\ndecryptedMsgWithPubKey={}"
                             + "\nDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n", decryptedMessageWithPubKey);
-                    if (connection.getPeersNodeAddressOptional().isPresent())
+                    if (connection.getPeersNodeAddressOptional().isPresent()) {
+                        directMessages.add(decryptedMessageWithPubKey);
                         decryptedDirectMessageListeners.forEach(
                                 e -> e.onDirectMessage(decryptedMessageWithPubKey, connection.getPeersNodeAddressOptional().get()));
-                    else
+                    } else {
                         log.error("peersNodeAddress is not available at onMessage.");
+                    }
                 } else {
                     log.debug("Wrong receiverAddressMaskHash. The message is not intended for us.");
                 }
