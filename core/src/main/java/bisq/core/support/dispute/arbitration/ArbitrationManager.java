@@ -17,6 +17,7 @@
 
 package bisq.core.support.dispute.arbitration;
 
+import bisq.core.app.AppStartupState;
 import bisq.core.btc.exceptions.TransactionVerificationException;
 import bisq.core.btc.exceptions.TxBroadcastException;
 import bisq.core.btc.exceptions.WalletException;
@@ -85,7 +86,8 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     @Inject
-    public ArbitrationManager(P2PService p2PService,
+    public ArbitrationManager(AppStartupState appStartupState,
+                              P2PService p2PService,
                               TradeWalletService tradeWalletService,
                               BtcWalletService walletService,
                               WalletsSetup walletsSetup,
@@ -97,7 +99,7 @@ public final class ArbitrationManager extends DisputeManager<ArbitrationDisputeL
                               ArbitrationDisputeListService arbitrationDisputeListService,
                               Config config,
                               PriceFeedService priceFeedService) {
-        super(p2PService, tradeWalletService, walletService, walletsSetup, tradeManager, closedTradableManager,
+        super(appStartupState, p2PService, tradeWalletService, walletService, walletsSetup, tradeManager, closedTradableManager,
                 openOfferManager, daoFacade, keyRing, arbitrationDisputeListService, config, priceFeedService);
     }
 

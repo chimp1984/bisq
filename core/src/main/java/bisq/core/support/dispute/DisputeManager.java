@@ -17,6 +17,7 @@
 
 package bisq.core.support.dispute;
 
+import bisq.core.app.AppStartupState;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.btc.wallet.BtcWalletService;
 import bisq.core.btc.wallet.Restrictions;
@@ -41,7 +42,6 @@ import bisq.core.trade.TradeDataValidation;
 import bisq.core.trade.TradeManager;
 import bisq.core.trade.closed.ClosedTradableManager;
 
-import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
 import bisq.network.p2p.SendMailboxMessageListener;
@@ -104,7 +104,8 @@ public abstract class DisputeManager<T extends DisputeList<? extends DisputeList
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public DisputeManager(P2PService p2PService,
+    public DisputeManager(AppStartupState appStartupState,
+                          P2PService p2PService,
                           TradeWalletService tradeWalletService,
                           BtcWalletService btcWalletService,
                           WalletsSetup walletsSetup,
@@ -116,7 +117,7 @@ public abstract class DisputeManager<T extends DisputeList<? extends DisputeList
                           DisputeListService<T> disputeListService,
                           Config config,
                           PriceFeedService priceFeedService) {
-        super(p2PService, walletsSetup);
+        super(appStartupState, p2PService, walletsSetup);
 
         this.tradeWalletService = tradeWalletService;
         this.btcWalletService = btcWalletService;
@@ -239,28 +240,10 @@ public abstract class DisputeManager<T extends DisputeList<? extends DisputeList
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void onAllServicesInitialized() {
-        super.onAllServicesInitialized();
+    protected void onWalletAndNetworkReady() {
+        super.onWalletAndNetworkReady();
         disputeListService.onAllServicesInitialized();
 
-        p2PService.addP2PServiceListener(new BootstrapListener() {
-            @Override
-            public void onUpdatedDataReceived() {
-                tryApplyMessages();
-            }
-        });
-
-        walletsSetup.downloadPercentageProperty().addListener((observable, oldValue, newValue) -> {
-            if (walletsSetup.isDownloadComplete())
-                tryApplyMessages();
-        });
-
-        walletsSetup.numPeersProperty().addListener((observable, oldValue, newValue) -> {
-            if (walletsSetup.hasSufficientPeersForBroadcast())
-                tryApplyMessages();
-        });
-
-        tryApplyMessages();
         cleanupDisputes();
 
         ObservableList<Dispute> disputes = getDisputeList().getList();

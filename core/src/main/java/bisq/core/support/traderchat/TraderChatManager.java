@@ -17,6 +17,7 @@
 
 package bisq.core.support.traderchat;
 
+import bisq.core.app.AppStartupState;
 import bisq.core.btc.setup.WalletsSetup;
 import bisq.core.locale.Res;
 import bisq.core.support.SupportManager;
@@ -54,11 +55,12 @@ public class TraderChatManager extends SupportManager {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     @Inject
-    public TraderChatManager(P2PService p2PService,
+    public TraderChatManager(AppStartupState appStartupState,
+                             P2PService p2PService,
                              WalletsSetup walletsSetup,
                              TradeManager tradeManager,
                              PubKeyRing pubKeyRing) {
-        super(p2PService, walletsSetup);
+        super(appStartupState, p2PService, walletsSetup);
         this.tradeManager = tradeManager;
         this.pubKeyRing = pubKeyRing;
     }
