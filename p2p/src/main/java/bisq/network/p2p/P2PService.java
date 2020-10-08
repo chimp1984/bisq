@@ -453,7 +453,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         checkArgument(protectedMailboxStorageEntries.size() == 1);
         var decryptedEntries = new ArrayList<>(getDecryptedEntries(protectedMailboxStorageEntries));
         if (decryptedEntries.size() == 1) {
-            storeMailboxDataAndNotifyListeners(decryptedEntries.get(0));
+            maybeStoreMailboxDataAndNotifyListeners(decryptedEntries.get(0));
         }
     }
 
@@ -472,7 +472,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
 
         Futures.addCallback(future, new FutureCallback<>() {
             public void onSuccess(Set<MailboxItem> decryptedMailboxMessageWithEntries) {
-                UserThread.execute(() -> decryptedMailboxMessageWithEntries.forEach(e -> storeMailboxDataAndNotifyListeners(e)));
+                UserThread.execute(() -> decryptedMailboxMessageWithEntries.forEach(e -> maybeStoreMailboxDataAndNotifyListeners(e)));
             }
 
             public void onFailure(@NotNull Throwable throwable) {
@@ -508,13 +508,27 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         return null;
     }
 
-    private void storeMailboxDataAndNotifyListeners(MailboxItem mailboxItem) {
+    private void maybeStoreMailboxDataAndNotifyListeners(MailboxItem mailboxItem) {
         DecryptedMessageWithPubKey decryptedMessageWithPubKey = mailboxItem.getDecryptedMessageWithPubKey();
         MailboxMessage mailboxMessage = (MailboxMessage) decryptedMessageWithPubKey.getNetworkEnvelope();
         NodeAddress sender = mailboxMessage.getSenderNodeAddress();
-        mailboxItemsByUid.put(mailboxMessage.getUid(), mailboxItem);
+        String uid = mailboxMessage.getUid();
+        if (mailboxItemsByUid.containsKey(uid)) {
+            MailboxItem item = mailboxItemsByUid.get(uid);
+            if (item == null) {
+                log.info("We had received, processed and removed that mailbox message already. " +
+                        "This is expected if we receive the same message from several peers.");
+            } else {
+                log.info("We have already an entry with that mailbox message. " +
+                                "This is expected if we receive the same message from several peers. " +
+                                "Mailbox message of type {}",
+                        item.getDecryptedMessageWithPubKey().getNetworkEnvelope().getClass().getSimpleName());
+            }
+            return;
+        }
+        mailboxItemsByUid.put(uid, mailboxItem);
         log.info("Received a {} mailbox message with uid {} and senderAddress {}",
-                mailboxMessage.getClass().getSimpleName(), mailboxMessage.getUid(), sender);
+                mailboxMessage.getClass().getSimpleName(), uid, sender);
         decryptedMailboxListeners.forEach(e -> e.onMailboxMessageAdded(decryptedMessageWithPubKey, sender));
     }
 
@@ -743,55 +757,67 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     }
 
     public void removeEntryFromMailbox(DecryptedMessageWithPubKey decryptedMessageWithPubKey) {
-        // We need to delay a bit to avoid that we remove our msg then get it from other peers again and reapply it again.
-        // If we delay the removal we have better chances that repeated network_messages we got from other peers are already filtered
-        // at the P2PService layer.
-        // Though we have to check in the client classes to not apply the same message again as there is no guarantee
-        // when we would get a message again from the network.
-        try {
-            UserThread.runAfter(() -> delayedRemoveEntryFromMailbox(decryptedMessageWithPubKey), 2);
-        } catch (NetworkNotReadyException t) {
-            // If we called too early it might throw a NetworkNotReadyException. We will try again
-            try {
-                UserThread.runAfter(() -> delayedRemoveEntryFromMailbox(decryptedMessageWithPubKey), 60);
-            } catch (NetworkNotReadyException ignore) {
-                log.warn("We tried to call delayedRemoveEntryFromMailbox 60 sec. after we received an " +
-                        "NetworkNotReadyException but it failed again. We give up here.");
-            }
-        }
-    }
-
-    private void delayedRemoveEntryFromMailbox(DecryptedMessageWithPubKey decryptedMessageWithPubKey) {
         if (!isBootstrapped()) {
             // We don't throw an NetworkNotReadyException here.
             // This case should not happen anyway as we check for isBootstrapped in the callers.
             log.warn("You must have bootstrapped before adding data to the P2P network.");
+            return;
         }
 
         MailboxMessage mailboxMessage = (MailboxMessage) decryptedMessageWithPubKey.getNetworkEnvelope();
         String uid = mailboxMessage.getUid();
-        if (mailboxItemsByUid.containsKey(uid)) {
-            ProtectedMailboxStorageEntry mailboxData = mailboxItemsByUid.get(uid).getProtectedMailboxStorageEntry();
-            if (mailboxData != null && mailboxData.getProtectedStoragePayload() instanceof MailboxStoragePayload) {
-                MailboxStoragePayload expirableMailboxStoragePayload = (MailboxStoragePayload) mailboxData.getProtectedStoragePayload();
-                PublicKey receiversPubKey = mailboxData.getReceiversPubKey();
-                checkArgument(receiversPubKey.equals(keyRing.getSignatureKeyPair().getPublic()),
-                        "receiversPubKey is not matching with our key. That must not happen.");
-                try {
-                    ProtectedMailboxStorageEntry protectedMailboxStorageEntry = p2PDataStorage.getMailboxDataWithSignedSeqNr(
-                            expirableMailboxStoragePayload,
-                            keyRing.getSignatureKeyPair(),
-                            receiversPubKey);
-                    p2PDataStorage.remove(protectedMailboxStorageEntry, networkNode.getNodeAddress());
-                } catch (CryptoException e) {
-                    log.error("Signing at getDataWithSignedSeqNr failed. That should never happen.");
-                }
+        if (!mailboxItemsByUid.containsKey(uid)) {
+            log.warn("We do not have a mailbox item with uid {}", uid);
+            return;
+        }
 
-                mailboxItemsByUid.remove(uid);
-                log.info("Removed successfully decryptedMsgWithPubKey. uid={}", uid);
-            }
-        } else {
-            log.warn("uid for mailbox entry not found in mailboxMap." + "uid={}", uid);
+        MailboxItem mailboxItem = mailboxItemsByUid.get(uid);
+        if (mailboxItem == null) {
+            log.warn("Mailbox item with uid {} is null. We have removed it already.", uid);
+            return;
+        }
+
+        if (!mailboxItem.getDecryptedMessageWithPubKey().equals(decryptedMessageWithPubKey)) {
+            log.warn("Mailbox message from map does not match message from parameter. uid={}", uid);
+            return;
+        }
+
+        ProtectedMailboxStorageEntry protectedMailboxStorageEntry = mailboxItem.getProtectedMailboxStorageEntry();
+        if (protectedMailboxStorageEntry == null) {
+            log.warn("protectedMailboxStorageEntry is null. uid={}", uid);
+            return;
+        }
+
+        ProtectedStoragePayload protectedStoragePayload = protectedMailboxStorageEntry.getProtectedStoragePayload();
+        if (!(protectedStoragePayload instanceof MailboxStoragePayload)) {
+            log.warn("protectedStoragePayload is not MailboxStoragePayload. uid={}", uid);
+            return;
+        }
+
+        MailboxStoragePayload mailboxStoragePayload = (MailboxStoragePayload) protectedStoragePayload;
+
+        PublicKey receiversPubKey = protectedMailboxStorageEntry.getReceiversPubKey();
+        PublicKey myPubKey = keyRing.getSignatureKeyPair().getPublic();
+        if (!receiversPubKey.equals(myPubKey)) {
+            log.warn("receiversPubKey is not matching myPubKey. uid={}", uid);
+            return;
+        }
+
+        try {
+            // We create a new protectedMailboxStorageEntry with a new seq number for removing the data
+            ProtectedMailboxStorageEntry storageEntryToRemove = p2PDataStorage.getMailboxDataWithSignedSeqNr(
+                    mailboxStoragePayload,
+                    keyRing.getSignatureKeyPair(),
+                    receiversPubKey);
+            p2PDataStorage.remove(storageEntryToRemove, networkNode.getNodeAddress());
+
+            // We set null to mark it as received and removed. Otherwise we would risk to receive the message again
+            // and re-apply it.
+            mailboxItemsByUid.put(uid, null);
+
+            log.info("ProtectedMailboxStorageEntry with uid {} was removed.", uid);
+        } catch (CryptoException e) {
+            log.error(e.toString());
         }
     }
 
