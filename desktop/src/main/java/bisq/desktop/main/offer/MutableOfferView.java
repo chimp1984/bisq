@@ -49,8 +49,8 @@ import bisq.desktop.util.Layout;
 import bisq.core.locale.CurrencyUtil;
 import bisq.core.locale.Res;
 import bisq.core.locale.TradeCurrency;
-import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
+import bisq.core.offer.OpenOffer;
 import bisq.core.payment.FasterPaymentsAccount;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.payment.payload.PaymentMethod;
@@ -352,14 +352,14 @@ public abstract class MutableOfferView<M extends MutableOfferViewModel<?>> exten
     private void onPlaceOffer() {
         if (model.getDataModel().canPlaceOffer()) {
             if (model.getDataModel().isMakerFeeValid()) {
-                Offer offer = model.createAndGetOffer();
+                OpenOffer openOffer = model.createAndGetOpenOffer();
                 if (!DevEnv.isDevMode()) {
                     offerDetailsWindow.onPlaceOffer(() ->
-                            model.onPlaceOffer(offer, offerDetailsWindow::hide))
-                            .show(offer);
+                            model.onPlaceOpenOffer(openOffer, offerDetailsWindow::hide))
+                            .show(openOffer.getOffer());
                 } else {
                     balanceSubscription.unsubscribe();
-                    model.onPlaceOffer(offer, () -> {
+                    model.onPlaceOpenOffer(openOffer, () -> {
                     });
                 }
             } else {

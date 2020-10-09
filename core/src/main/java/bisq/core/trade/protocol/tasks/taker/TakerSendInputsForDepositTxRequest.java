@@ -96,7 +96,7 @@ public class TakerSendInputsForDepositTxRequest extends TradeTask {
             // This is used for verifying the peers account age witness
             PaymentAccountPayload paymentAccountPayload = checkNotNull(processModel.getPaymentAccountPayload(trade),
                     "processModel.getPaymentAccountPayload(trade) must not be null");
-            byte[] signatureOfNonce = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(),
+            byte[] signatureOfNonce = Sig.sign(processModel.getSignatureKeyPair().getPrivate(),
                     offerId.getBytes(Charsets.UTF_8));
 
             InputsForDepositTxRequest request = new InputsForDepositTxRequest(
@@ -132,6 +132,7 @@ public class TakerSendInputsForDepositTxRequest extends TradeTask {
             processModel.getP2PService().sendEncryptedDirectMessage(
                     trade.getTradingPeerNodeAddress(),
                     processModel.getTradingPeer().getPubKeyRing(),
+                    processModel.getSignatureKeyPair(),
                     request,
                     new SendDirectMessageListener() {
                         public void onArrived() {

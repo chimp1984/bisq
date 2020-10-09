@@ -70,7 +70,7 @@ public abstract class MakerSendsInputsForDepositTxResponse extends TradeTask {
             // He cannot manipulate the preparedDepositTx - so we avoid to have a challenge protocol for passing the
             // nonce we want to get signed.
             // This is used for verifying the peers account age witness
-            PrivateKey privateKey = processModel.getKeyRing().getSignatureKeyPair().getPrivate();
+            PrivateKey privateKey = processModel.getSignatureKeyPair().getPrivate();
             byte[] signatureOfNonce = Sig.sign(privateKey, preparedDepositTx);
             InputsForDepositTxResponse message = new InputsForDepositTxResponse(
                     processModel.getOfferId(),
@@ -96,6 +96,7 @@ public abstract class MakerSendsInputsForDepositTxResponse extends TradeTask {
             processModel.getP2PService().sendEncryptedDirectMessage(
                     peersNodeAddress,
                     processModel.getTradingPeer().getPubKeyRing(),
+                    processModel.getSignatureKeyPair(),
                     message,
                     new SendDirectMessageListener() {
                         @Override

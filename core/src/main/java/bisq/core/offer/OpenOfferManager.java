@@ -24,11 +24,13 @@ import bisq.core.dao.DaoFacade;
 import bisq.core.exceptions.TradePriceOutOfToleranceException;
 import bisq.core.filter.FilterManager;
 import bisq.core.locale.Res;
+import bisq.core.monetary.Price;
 import bisq.core.offer.availability.DisputeAgentSelection;
 import bisq.core.offer.messages.OfferAvailabilityRequest;
 import bisq.core.offer.messages.OfferAvailabilityResponse;
 import bisq.core.offer.placeoffer.PlaceOfferModel;
 import bisq.core.offer.placeoffer.PlaceOfferProtocol;
+import bisq.core.payment.PaymentAccount;
 import bisq.core.provider.price.PriceFeedService;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
 import bisq.core.support.dispute.mediation.mediator.MediatorManager;
@@ -41,6 +43,7 @@ import bisq.core.user.Preferences;
 import bisq.core.user.User;
 import bisq.core.util.Validator;
 
+import bisq.network.crypto.EncryptionService;
 import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.AckMessageSourceType;
 import bisq.network.p2p.BootstrapListener;
@@ -56,8 +59,10 @@ import bisq.common.UserThread;
 import bisq.common.app.Capabilities;
 import bisq.common.app.Capability;
 import bisq.common.app.Version;
+import bisq.common.crypto.Encryption;
 import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.Sig;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
 import bisq.common.persistence.PersistenceManager;
@@ -69,6 +74,8 @@ import org.bitcoinj.core.Coin;
 import javax.inject.Inject;
 
 import javafx.collections.ObservableList;
+
+import java.security.KeyPair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -114,6 +121,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     private final DaoFacade daoFacade;
     private final FilterManager filterManager;
     private final PersistenceManager<TradableList<OpenOffer>> persistenceManager;
+    private final EncryptionService encryptionService;
     private final Map<String, OpenOffer> offersToBeEdited = new HashMap<>();
     private final TradableList<OpenOffer> openOffers = new TradableList<>();
     private boolean stopped;
@@ -142,7 +150,8 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                             RefundAgentManager refundAgentManager,
                             DaoFacade daoFacade,
                             FilterManager filterManager,
-                            PersistenceManager<TradableList<OpenOffer>> persistenceManager) {
+                            PersistenceManager<TradableList<OpenOffer>> persistenceManager,
+                            EncryptionService encryptionService) {
         this.createOfferService = createOfferService;
         this.keyRing = keyRing;
         this.user = user;
@@ -161,6 +170,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         this.daoFacade = daoFacade;
         this.filterManager = filterManager;
         this.persistenceManager = persistenceManager;
+        this.encryptionService = encryptionService;
 
         this.persistenceManager.initialize(openOffers, "OpenOffers", PersistenceManager.Source.PRIVATE);
     }
@@ -175,6 +185,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         openOffers.forEach(e -> {
             Offer offer = e.getOffer();
             offer.setPriceFeedService(priceFeedService);
+            encryptionService.addEncryptionKeyPair(e.getEncryptionKeyPair());
         });
     }
 
@@ -344,11 +355,42 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void placeOffer(Offer offer,
-                           double buyerSecurityDeposit,
-                           boolean useSavingsWallet,
-                           TransactionResultHandler resultHandler,
-                           ErrorMessageHandler errorMessageHandler) {
+    public OpenOffer createAndGetOpenOffer(String offerId,
+                                           OfferPayload.Direction direction,
+                                           String currencyCode,
+                                           Coin amount,
+                                           Coin minAmount,
+                                           Price price,
+                                           Coin txFee,
+                                           boolean useMarketBasedPrice,
+                                           double marketPriceMargin,
+                                           double buyerSecurityDeposit,
+                                           PaymentAccount paymentAccount) {
+        KeyPair signatureKeyPair = Sig.generateKeyPair();
+        KeyPair encryptionKeyPair = Encryption.generateKeyPair();
+        encryptionService.addEncryptionKeyPair(encryptionKeyPair);
+        PubKeyRing pubKeyRing = new PubKeyRing(signatureKeyPair.getPublic(), encryptionKeyPair.getPublic());
+        Offer offer = createOfferService.createAndGetOffer(pubKeyRing,
+                offerId,
+                direction,
+                currencyCode,
+                amount,
+                minAmount,
+                price,
+                txFee,
+                useMarketBasedPrice,
+                marketPriceMargin,
+                buyerSecurityDeposit,
+                paymentAccount);
+        return new OpenOffer(offer, signatureKeyPair, encryptionKeyPair);
+    }
+
+    public void placeOpenOffer(OpenOffer openOffer,
+                               double buyerSecurityDeposit,
+                               boolean useSavingsWallet,
+                               TransactionResultHandler resultHandler,
+                               ErrorMessageHandler errorMessageHandler) {
+        Offer offer = openOffer.getOffer();
         checkNotNull(offer.getMakerFee(), "makerFee must not be null");
 
         Coin reservedFundsForOffer = createOfferService.getReservedFundsForOffer(offer.getDirection(),
@@ -356,7 +398,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 buyerSecurityDeposit,
                 createOfferService.getSellerSecurityDepositAsDouble(buyerSecurityDeposit));
 
-        PlaceOfferModel model = new PlaceOfferModel(offer,
+        PlaceOfferModel model = new PlaceOfferModel(openOffer,
                 reservedFundsForOffer,
                 useSavingsWallet,
                 btcWalletService,
@@ -371,7 +413,6 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         PlaceOfferProtocol placeOfferProtocol = new PlaceOfferProtocol(
                 model,
                 transaction -> {
-                    OpenOffer openOffer = new OpenOffer(offer);
                     openOffers.add(openOffer);
                     requestPersistence();
                     resultHandler.handleResult(transaction);
@@ -408,6 +449,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
         if (!offersToBeEdited.containsKey(openOffer.getId())) {
             Offer offer = openOffer.getOffer();
             offerBookService.activateOffer(offer,
+                    openOffer.getSignatureKeyPair(),
                     () -> {
                         openOffer.setState(OpenOffer.State.AVAILABLE);
                         requestPersistence();
@@ -487,7 +529,9 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
             openOffer.setState(OpenOffer.State.CANCELED);
             openOffers.remove(openOffer);
 
-            OpenOffer editedOpenOffer = new OpenOffer(editedOffer);
+            OpenOffer editedOpenOffer = new OpenOffer(editedOffer,
+                    openOffer.getSignatureKeyPair(),
+                    openOffer.getEncryptionKeyPair());
             editedOpenOffer.setState(originalState);
 
             openOffers.add(editedOpenOffer);
@@ -553,7 +597,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     public boolean isMyOffer(Offer offer) {
-        return offer.isMyOffer(keyRing);
+        return offer.isMyOffer(keyRing.getPubKeyRing());
     }
 
     public ObservableList<OpenOffer> getObservableList() {
@@ -836,7 +880,9 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
                 updatedOffer.setPriceFeedService(priceFeedService);
                 updatedOffer.setState(originalOfferState);
 
-                OpenOffer updatedOpenOffer = new OpenOffer(updatedOffer);
+                OpenOffer updatedOpenOffer = new OpenOffer(updatedOffer,
+                        originalOpenOffer.getSignatureKeyPair(),
+                        originalOpenOffer.getEncryptionKeyPair());
                 updatedOpenOffer.setState(originalOpenOfferState);
                 openOffers.add(updatedOpenOffer);
                 requestPersistence();
@@ -879,6 +925,7 @@ public class OpenOfferManager implements PeerManager.Listener, DecryptedDirectMe
 
     private void republishOffer(OpenOffer openOffer) {
         offerBookService.addOffer(openOffer.getOffer(),
+                openOffer.getSignatureKeyPair(),
                 () -> {
                     if (!stopped) {
                         log.debug("Successfully added offer to P2P network.");

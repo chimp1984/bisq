@@ -24,6 +24,7 @@ import bisq.core.dao.DaoFacade;
 import bisq.core.filter.FilterManager;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookService;
+import bisq.core.offer.OpenOffer;
 import bisq.core.support.dispute.arbitration.arbitrator.ArbitratorManager;
 import bisq.core.trade.statistics.TradeStatisticsManager;
 import bisq.core.user.User;
@@ -42,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 public class PlaceOfferModel implements Model {
     // Immutable
     private final Offer offer;
+    private final OpenOffer openOffer;
     private final Coin reservedFundsForOffer;
     private final boolean useSavingsWallet;
     private final BtcWalletService walletService;
@@ -61,7 +63,7 @@ public class PlaceOfferModel implements Model {
     @Setter
     private Transaction transaction;
 
-    public PlaceOfferModel(Offer offer,
+    public PlaceOfferModel(OpenOffer openOffer,
                            Coin reservedFundsForOffer,
                            boolean useSavingsWallet,
                            BtcWalletService walletService,
@@ -73,7 +75,8 @@ public class PlaceOfferModel implements Model {
                            DaoFacade daoFacade,
                            User user,
                            FilterManager filterManager) {
-        this.offer = offer;
+        this.openOffer = openOffer;
+        this.offer = openOffer.getOffer();
         this.reservedFundsForOffer = reservedFundsForOffer;
         this.useSavingsWallet = useSavingsWallet;
         this.walletService = walletService;

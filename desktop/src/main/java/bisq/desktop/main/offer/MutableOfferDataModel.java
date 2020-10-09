@@ -34,9 +34,9 @@ import bisq.core.locale.TradeCurrency;
 import bisq.core.monetary.Price;
 import bisq.core.monetary.Volume;
 import bisq.core.offer.CreateOfferService;
-import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.offer.OfferUtil;
+import bisq.core.offer.OpenOffer;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.payment.HalCashAccount;
 import bisq.core.payment.PaymentAccount;
@@ -284,8 +284,8 @@ public abstract class MutableOfferDataModel extends OfferDataModel implements Bs
     // UI actions
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    Offer createAndGetOffer() {
-        return createOfferService.createAndGetOffer(offerId,
+    OpenOffer createAndGetOpenOffer() {
+        return openOfferManager.createAndGetOpenOffer(offerId,
                 direction,
                 tradeCurrencyCode.get(),
                 amount.get(),
@@ -308,8 +308,8 @@ public abstract class MutableOfferDataModel extends OfferDataModel implements Bs
         feeTxSize = estimatedFeeAndTxSize.second;
     }
 
-    void onPlaceOffer(Offer offer, TransactionResultHandler resultHandler) {
-        openOfferManager.placeOffer(offer,
+    void onPlaceOpenOffer(OpenOffer openOffer, TransactionResultHandler resultHandler) {
+        openOfferManager.placeOpenOffer(openOffer,
                 buyerSecurityDeposit.get(),
                 useSavingsWallet,
                 resultHandler,

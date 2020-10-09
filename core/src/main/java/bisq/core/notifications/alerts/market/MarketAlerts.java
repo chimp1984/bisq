@@ -124,7 +124,7 @@ public class MarketAlerts {
             boolean isFiatCurrency = CurrencyUtil.isFiatCurrency(currencyCode);
             String alertId = getAlertId(offer);
             user.getMarketAlertFilters().stream()
-                    .filter(marketAlertFilter -> !offer.isMyOffer(keyRing))
+                    .filter(marketAlertFilter -> !offer.isMyOffer(keyRing.getPubKeyRing()))
                     .filter(marketAlertFilter -> offer.getPaymentMethod().equals(marketAlertFilter.getPaymentAccount().getPaymentMethod()))
                     .filter(marketAlertFilter -> marketAlertFilter.notContainsAlertId(alertId))
                     .forEach(marketAlertFilter -> {

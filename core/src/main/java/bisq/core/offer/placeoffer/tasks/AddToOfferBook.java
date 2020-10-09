@@ -33,6 +33,7 @@ public class AddToOfferBook extends Task<PlaceOfferModel> {
         try {
             runInterceptHook();
             model.getOfferBookService().addOffer(model.getOffer(),
+                    model.getOpenOffer().getSignatureKeyPair(),
                     () -> {
                         model.setOfferAddedToOfferBook(true);
                         complete();

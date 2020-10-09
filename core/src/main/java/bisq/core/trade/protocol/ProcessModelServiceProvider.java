@@ -33,8 +33,6 @@ import bisq.core.user.User;
 
 import bisq.network.p2p.P2PService;
 
-import bisq.common.crypto.KeyRing;
-
 import javax.inject.Inject;
 
 import lombok.Getter;
@@ -55,7 +53,6 @@ public class ProcessModelServiceProvider {
     private final ArbitratorManager arbitratorManager;
     private final MediatorManager mediatorManager;
     private final RefundAgentManager refundAgentManager;
-    private final KeyRing keyRing;
 
     @Inject
     public ProcessModelServiceProvider(OpenOfferManager openOfferManager,
@@ -71,8 +68,7 @@ public class ProcessModelServiceProvider {
                                        TradeStatisticsManager tradeStatisticsManager,
                                        ArbitratorManager arbitratorManager,
                                        MediatorManager mediatorManager,
-                                       RefundAgentManager refundAgentManager,
-                                       KeyRing keyRing) {
+                                       RefundAgentManager refundAgentManager) {
 
         this.openOfferManager = openOfferManager;
         this.p2PService = p2PService;
@@ -88,6 +84,5 @@ public class ProcessModelServiceProvider {
         this.arbitratorManager = arbitratorManager;
         this.mediatorManager = mediatorManager;
         this.refundAgentManager = refundAgentManager;
-        this.keyRing = keyRing;
     }
 }

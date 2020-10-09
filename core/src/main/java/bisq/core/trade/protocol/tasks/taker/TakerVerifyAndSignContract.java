@@ -106,7 +106,7 @@ public class TakerVerifyAndSignContract extends TradeTask {
                 failed("Contracts are not matching");
             }
 
-            String signature = Sig.sign(processModel.getKeyRing().getSignatureKeyPair().getPrivate(), contractAsJson);
+            String signature = Sig.sign(processModel.getSignatureKeyPair().getPrivate(), contractAsJson);
             trade.setContract(contract);
             trade.setContractAsJson(contractAsJson);
 

@@ -47,6 +47,7 @@ import bisq.core.offer.Offer;
 import bisq.core.offer.OfferPayload;
 import bisq.core.offer.OfferRestrictions;
 import bisq.core.offer.OfferUtil;
+import bisq.core.offer.OpenOffer;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.provider.fee.FeeService;
 import bisq.core.provider.price.MarketPrice;
@@ -622,10 +623,10 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
     // UI actions
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    void onPlaceOffer(Offer offer, Runnable resultHandler) {
+    void onPlaceOpenOffer(OpenOffer openOffer, Runnable resultHandler) {
         errorMessage.set(null);
         createOfferRequested = true;
-
+        Offer offer = openOffer.getOffer();
         if (timeoutTimer == null) {
             timeoutTimer = UserThread.runAfter(() -> {
                 stopTimeoutTimer();
@@ -656,7 +657,7 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
 
         offer.errorMessageProperty().addListener(errorMessageListener);
 
-        dataModel.onPlaceOffer(offer, transaction -> {
+        dataModel.onPlaceOpenOffer(openOffer, transaction -> {
             stopTimeoutTimer();
             resultHandler.run();
             placeOfferCompleted.set(true);
@@ -1061,9 +1062,10 @@ public abstract class MutableOfferViewModel<M extends MutableOfferDataModel> ext
         return btcFormatter.formatCoin(coin);
     }
 
-    public Offer createAndGetOffer() {
-        offer = dataModel.createAndGetOffer();
-        return offer;
+    public OpenOffer createAndGetOpenOffer() {
+        OpenOffer openOffer = dataModel.createAndGetOpenOffer();
+        offer = openOffer.getOffer();
+        return openOffer;
     }
 
     public Callback<ListView<PaymentAccount>, ListCell<PaymentAccount>> getPaymentAccountListCellFactory(

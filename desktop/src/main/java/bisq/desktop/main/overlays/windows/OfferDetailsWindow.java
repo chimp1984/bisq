@@ -238,7 +238,7 @@ public class OfferDetailsWindow extends Overlay<OfferDetailsWindow> {
         final String makerPaymentAccountId = offer.getMakerPaymentAccountId();
         final PaymentAccount myPaymentAccount = user.getPaymentAccount(makerPaymentAccountId);
         String countryCode = offer.getCountryCode();
-        if (offer.isMyOffer(keyRing) && makerPaymentAccountId != null && myPaymentAccount != null) {
+        if (offer.isMyOffer(keyRing.getPubKeyRing()) && makerPaymentAccountId != null && myPaymentAccount != null) {
             addConfirmationLabelLabel(gridPane, ++rowIndex, Res.get("offerDetailsWindow.myTradingAccount"), myPaymentAccount.getAccountName());
         } else {
             final String method = Res.get(paymentMethod.getId());

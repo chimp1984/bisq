@@ -22,15 +22,22 @@ import bisq.core.monetary.Price;
 import bisq.core.offer.CreateOfferService;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookService;
+import bisq.core.offer.OpenOffer;
 import bisq.core.offer.OpenOfferManager;
 import bisq.core.payment.PaymentAccount;
 import bisq.core.user.User;
+
+import bisq.common.crypto.Encryption;
+import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.Sig;
 
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.utils.Fiat;
 
 import javax.inject.Inject;
+
+import java.security.KeyPair;
 
 import java.math.BigDecimal;
 
@@ -98,6 +105,8 @@ class CoreOffersService {
                              double buyerSecurityDeposit,
                              String paymentAccountId,
                              Consumer<Offer> resultHandler) {
+
+
         String upperCaseCurrencyCode = currencyCode.toUpperCase();
         String offerId = createOfferService.getRandomOfferId();
         Direction direction = Direction.valueOf(directionAsString.toUpperCase());
@@ -106,7 +115,8 @@ class CoreOffersService {
         Coin minAmount = Coin.valueOf(minAmountAsLong);
         PaymentAccount paymentAccount = user.getPaymentAccount(paymentAccountId);
         Coin useDefaultTxFee = Coin.ZERO;
-        Offer offer = createOfferService.createAndGetOffer(offerId,
+
+        OpenOffer openOffer = openOfferManager.createAndGetOpenOffer(offerId,
                 direction,
                 upperCaseCurrencyCode,
                 amount,
@@ -117,11 +127,12 @@ class CoreOffersService {
                 exactMultiply(marketPriceMargin, 0.01),
                 buyerSecurityDeposit,
                 paymentAccount);
+        Offer offer = openOffer.getOffer();
 
         // We don't support atm funding from external wallet to keep it simple.
         boolean useSavingsWallet = true;
         //noinspection ConstantConditions
-        placeOffer(offer,
+        placeOffer(openOffer,
                 buyerSecurityDeposit,
                 useSavingsWallet,
                 transaction -> resultHandler.accept(offer));
@@ -139,7 +150,12 @@ class CoreOffersService {
                     double buyerSecurityDeposit,
                     PaymentAccount paymentAccount) {
         Coin useDefaultTxFee = Coin.ZERO;
-        return createOfferService.createAndGetOffer(offerId,
+        KeyPair signatureKeyPair = Sig.generateKeyPair();
+        KeyPair encryptionKeyPair = Encryption.generateKeyPair();
+        PubKeyRing pubKeyRing = new PubKeyRing(signatureKeyPair.getPublic(), encryptionKeyPair.getPublic());
+        //TODO wrong domain access
+        return createOfferService.createAndGetOffer(pubKeyRing,
+                offerId,
                 direction,
                 currencyCode.toUpperCase(),
                 amount,
@@ -152,16 +168,17 @@ class CoreOffersService {
                 paymentAccount);
     }
 
-    private void placeOffer(Offer offer,
+    private void placeOffer(OpenOffer openOffer,
                             double buyerSecurityDeposit,
                             boolean useSavingsWallet,
                             Consumer<Transaction> resultHandler) {
-        openOfferManager.placeOffer(offer,
+        openOfferManager.placeOpenOffer(openOffer,
                 buyerSecurityDeposit,
                 useSavingsWallet,
                 resultHandler::accept,
                 log::error);
 
+        Offer offer = openOffer.getOffer();
         if (offer.getErrorMessage() != null)
             throw new IllegalStateException(offer.getErrorMessage());
     }

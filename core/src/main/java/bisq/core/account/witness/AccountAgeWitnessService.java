@@ -596,7 +596,7 @@ public class AccountAgeWitnessService {
         if (!hasTradeLimitException(peersWitness)) {
             final long accountSignAge = getWitnessSignAge(peersWitness, peersCurrentDate);
             AccountAge accountAgeCategory = getPeersAccountAgeCategory(accountSignAge);
-            OfferPayload.Direction direction = offer.isMyOffer(keyRing) ?
+            OfferPayload.Direction direction = offer.isMyOffer(keyRing.getPubKeyRing()) ?
                     offer.getMirroredDirection() : offer.getDirection();
             peersCurrentTradeLimit = getTradeLimit(defaultMaxTradeLimit, currencyCode, peersWitness,
                     accountAgeCategory, direction, offer.getPaymentMethod());

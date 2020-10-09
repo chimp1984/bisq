@@ -71,7 +71,6 @@ public class CreateOfferService {
     private final ReferralIdService referralIdService;
     private final FilterManager filterManager;
     private final P2PService p2PService;
-    private final PubKeyRing pubKeyRing;
     private final User user;
     private final BtcWalletService btcWalletService;
 
@@ -90,7 +89,6 @@ public class CreateOfferService {
                               ReferralIdService referralIdService,
                               FilterManager filterManager,
                               P2PService p2PService,
-                              PubKeyRing pubKeyRing,
                               User user,
                               BtcWalletService btcWalletService) {
         this.txFeeEstimationService = txFeeEstimationService;
@@ -102,7 +100,6 @@ public class CreateOfferService {
         this.referralIdService = referralIdService;
         this.filterManager = filterManager;
         this.p2PService = p2PService;
-        this.pubKeyRing = pubKeyRing;
         this.user = user;
         this.btcWalletService = btcWalletService;
     }
@@ -118,7 +115,8 @@ public class CreateOfferService {
                 Version.VERSION.replace(".", "");
     }
 
-    public Offer createAndGetOffer(String offerId,
+    public Offer createAndGetOffer(PubKeyRing pubKeyRing,
+                                   String offerId,
                                    OfferPayload.Direction direction,
                                    String currencyCode,
                                    Coin amount,

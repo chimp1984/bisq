@@ -56,7 +56,7 @@ public class OpenOfferManagerTest {
             return null;
         }).when(offerBookService).deactivateOffer(any(OfferPayload.class), any(ResultHandler.class), any(ErrorMessageHandler.class));
 
-        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer));
+        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer), signatureKeyPair, encryptionKeyPair);
 
         ResultHandler resultHandler = () -> {
             startEditOfferSuccessful.set(true);
@@ -88,7 +88,7 @@ public class OpenOfferManagerTest {
             startEditOfferSuccessful.set(true);
         };
 
-        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer));
+        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer), signatureKeyPair, encryptionKeyPair);
         openOffer.setState(OpenOffer.State.DEACTIVATED);
 
         manager.editOpenOfferStart(openOffer, resultHandler, null);
@@ -115,7 +115,7 @@ public class OpenOfferManagerTest {
             startEditOfferSuccessful.set(true);
         };
 
-        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer));
+        final OpenOffer openOffer = new OpenOffer(make(btcUsdOffer), signatureKeyPair, encryptionKeyPair);
         openOffer.setState(OpenOffer.State.DEACTIVATED);
 
         manager.editOpenOfferStart(openOffer, resultHandler, null);

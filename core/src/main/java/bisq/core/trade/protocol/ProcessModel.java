@@ -45,8 +45,10 @@ import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
 
-import bisq.common.crypto.KeyRing;
+import bisq.common.crypto.CryptoUtils;
+import bisq.common.crypto.KeyStorage;
 import bisq.common.crypto.PubKeyRing;
+import bisq.common.crypto.Sig;
 import bisq.common.proto.ProtoUtil;
 import bisq.common.proto.persistable.PersistablePayload;
 import bisq.common.taskrunner.Model;
@@ -58,6 +60,12 @@ import org.bitcoinj.core.Transaction;
 
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.spec.InvalidKeySpecException;
 
 import java.util.List;
 import java.util.Optional;
@@ -154,6 +162,9 @@ public class ProcessModel implements Model, PersistablePayload {
     @Setter
     private long sellerPayoutAmountFromMediation;
 
+    // Added in 1.4.1
+    private final KeyPair signatureKeyPair;
+
 
     // We want to indicate the user the state of the message delivery of the
     // CounterCurrencyTransferStartedMessage. As well we do an automatic re-send in case it was not ACKed yet.
@@ -161,14 +172,19 @@ public class ProcessModel implements Model, PersistablePayload {
     @Setter
     private ObjectProperty<MessageState> paymentStartedMessageStateProperty = new SimpleObjectProperty<>(MessageState.UNDEFINED);
 
-    public ProcessModel(String offerId, String accountId, PubKeyRing pubKeyRing) {
-        this(offerId, accountId, pubKeyRing, new TradingPeer());
+    public ProcessModel(String offerId, String accountId, PubKeyRing pubKeyRing, KeyPair signatureKeyPair) {
+        this(offerId, accountId, pubKeyRing, signatureKeyPair, new TradingPeer());
     }
 
-    public ProcessModel(String offerId, String accountId, PubKeyRing pubKeyRing, TradingPeer tradingPeer) {
+    public ProcessModel(String offerId,
+                        String accountId,
+                        PubKeyRing pubKeyRing,
+                        KeyPair signatureKeyPair,
+                        TradingPeer tradingPeer) {
         this.offerId = offerId;
         this.accountId = accountId;
         this.pubKeyRing = pubKeyRing;
+        this.signatureKeyPair = signatureKeyPair;
         // If tradingPeer was null in persisted data from some error cases we set a new one to not cause nullPointers
         this.tradingPeer = tradingPeer != null ? tradingPeer : new TradingPeer();
     }
@@ -209,6 +225,7 @@ public class ProcessModel implements Model, PersistablePayload {
         Optional.ofNullable(myMultiSigPubKey).ifPresent(e -> builder.setMyMultiSigPubKey(ByteString.copyFrom(myMultiSigPubKey)));
         Optional.ofNullable(tempTradingPeerNodeAddress).ifPresent(e -> builder.setTempTradingPeerNodeAddress(tempTradingPeerNodeAddress.toProtoMessage()));
         Optional.ofNullable(mediatedPayoutTxSignature).ifPresent(e -> builder.setMediatedPayoutTxSignature(ByteString.copyFrom(e)));
+        Optional.ofNullable(signatureKeyPair).ifPresent(keyPair -> builder.setSigKey(ByteString.copyFrom(CryptoUtils.getEncodedPrivateKey(keyPair.getPrivate()))));
 
         return builder.build();
     }
@@ -216,7 +233,18 @@ public class ProcessModel implements Model, PersistablePayload {
     public static ProcessModel fromProto(protobuf.ProcessModel proto, CoreProtoResolver coreProtoResolver) {
         TradingPeer tradingPeer = TradingPeer.fromProto(proto.getTradingPeer(), coreProtoResolver);
         PubKeyRing pubKeyRing = PubKeyRing.fromProto(proto.getPubKeyRing());
-        ProcessModel processModel = new ProcessModel(proto.getOfferId(), proto.getAccountId(), pubKeyRing, tradingPeer);
+
+        KeyPair signatureKeyPair = null;
+        try {
+            PrivateKey signaturePrivateKey = CryptoUtils.getPrivateKeyFromEncodedKey(KeyStorage.KeyEntry.MSG_SIGNATURE, proto.getSigKey().toByteArray());
+            PublicKey signaturePublicKey = Sig.getPublicSignatureKey(signaturePrivateKey);
+            signatureKeyPair = new KeyPair(signaturePublicKey, signaturePrivateKey);
+        } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+        }
+
+
+        ProcessModel processModel = new ProcessModel(proto.getOfferId(), proto.getAccountId(), pubKeyRing, signatureKeyPair, tradingPeer);
         processModel.setChangeOutputValue(proto.getChangeOutputValue());
         processModel.setUseSavingsWallet(proto.getUseSavingsWallet());
         processModel.setFundsNeededForTradeAsLong(proto.getFundsNeededForTradeAsLong());
@@ -366,10 +394,6 @@ public class ProcessModel implements Model, PersistablePayload {
 
     public RefundAgentManager getRefundAgentManager() {
         return provider.getRefundAgentManager();
-    }
-
-    public KeyRing getKeyRing() {
-        return provider.getKeyRing();
     }
 
     public DaoFacade getDaoFacade() {

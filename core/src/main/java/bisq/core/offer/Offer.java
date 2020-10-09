@@ -30,7 +30,6 @@ import bisq.core.provider.price.PriceFeedService;
 
 import bisq.network.p2p.NodeAddress;
 
-import bisq.common.crypto.KeyRing;
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.handlers.ErrorMessageHandler;
 import bisq.common.handlers.ResultHandler;
@@ -339,10 +338,9 @@ public class Offer implements NetworkPayload, PersistablePayload {
         return getDirection() == OfferPayload.Direction.BUY ? OfferPayload.Direction.SELL : OfferPayload.Direction.BUY;
     }
 
-    public boolean isMyOffer(KeyRing keyRing) {
-        return getPubKeyRing().equals(keyRing.getPubKeyRing());
+    public boolean isMyOffer(PubKeyRing pubKeyRing) {
+        return getPubKeyRing().equals(pubKeyRing);
     }
-
 
     public Optional<String> getAccountAgeWitnessHashAsHex() {
         if (getExtraDataMap() != null && getExtraDataMap().containsKey(OfferPayload.ACCOUNT_AGE_WITNESS_HASH))

@@ -36,8 +36,10 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.MGF1ParameterSpec;
+import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 import java.io.ByteArrayOutputStream;
@@ -151,7 +153,8 @@ public class Encryption {
         }
     }
 
-    private static byte[] getHmac(byte[] payload, SecretKey secretKey) throws NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException {
+    private static byte[] getHmac(byte[] payload,
+                                  SecretKey secretKey) throws NoSuchAlgorithmException, InvalidKeyException, NoSuchProviderException {
         Mac mac = Mac.getInstance(HMAC);
         mac.init(secretKey);
         return mac.doFinal(payload);
@@ -167,7 +170,8 @@ public class Encryption {
         return encrypt(getPayloadWithHmac(payload, secretKey), secretKey);
     }
 
-    public static byte[] decryptPayloadWithHmac(byte[] encryptedPayloadWithHmac, SecretKey secretKey) throws CryptoException {
+    public static byte[] decryptPayloadWithHmac(byte[] encryptedPayloadWithHmac,
+                                                SecretKey secretKey) throws CryptoException {
         byte[] payloadWithHmac = decrypt(encryptedPayloadWithHmac, secretKey);
         String payloadWithHmacAsHex = Hex.encode(payloadWithHmac);
         // first part is raw message
@@ -245,6 +249,14 @@ public class Encryption {
             log.error("Error creating sigPublicKey from bytes. sigPublicKeyBytes as hex={}, error={}", Utilities.bytesAsHexString(encryptionPubKeyBytes), e);
             throw new KeyConversionException(e);
         }
+    }
+
+    public static PublicKey getPublicEncryptionKey(PrivateKey privateKey)
+            throws NoSuchAlgorithmException, InvalidKeySpecException {
+        RSAPrivateCrtKey privateRSAKey = (RSAPrivateCrtKey) privateKey;
+        RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(privateRSAKey.getModulus(), privateRSAKey.getPublicExponent());
+        KeyFactory keyFactory = KeyFactory.getInstance(KeyStorage.KeyEntry.MSG_ENCRYPTION.getAlgorithm());
+        return keyFactory.generatePublic(publicKeySpec);
     }
 }
 

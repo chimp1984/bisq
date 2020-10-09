@@ -40,6 +40,9 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import lombok.extern.slf4j.Slf4j;
 
 import static bisq.common.crypto.Encryption.decryptSecretKey;
@@ -48,15 +51,24 @@ import static bisq.common.crypto.Encryption.decryptSecretKey;
 public class EncryptionService {
     private final KeyRing keyRing;
     private final NetworkProtoResolver networkProtoResolver;
+    private final Set<KeyPair> encryptionKeyPairSet = new HashSet<>();
 
     @Inject
     public EncryptionService(KeyRing keyRing, NetworkProtoResolver networkProtoResolver) {
         this.keyRing = keyRing;
         this.networkProtoResolver = networkProtoResolver;
+        encryptionKeyPairSet.add(keyRing.getEncryptionKeyPair());
     }
 
-    public SealedAndSigned encryptAndSign(PubKeyRing pubKeyRing, NetworkEnvelope networkEnvelope) throws CryptoException {
-        return encryptHybridWithSignature(networkEnvelope, keyRing.getSignatureKeyPair(), pubKeyRing.getEncryptionPubKey());
+    public SealedAndSigned encryptAndSign(PubKeyRing pubKeyRing,
+                                          NetworkEnvelope networkEnvelope) throws CryptoException {
+        return encryptAndSign(pubKeyRing, keyRing.getSignatureKeyPair(), networkEnvelope);
+    }
+
+    public SealedAndSigned encryptAndSign(PubKeyRing pubKeyRing,
+                                          KeyPair signatureKeyPair,
+                                          NetworkEnvelope networkEnvelope) throws CryptoException {
+        return encryptHybridWithSignature(networkEnvelope, signatureKeyPair, pubKeyRing.getEncryptionPubKey());
     }
 
     /**
@@ -84,15 +96,32 @@ public class EncryptionService {
         }
     }
 
-    public DecryptedMessageWithPubKey decryptAndVerify(SealedAndSigned sealedAndSigned) throws
-            CryptoException, ProtobufferException {
-        DecryptedDataTuple decryptedDataTuple = decryptHybridWithSignature(sealedAndSigned,
-                keyRing.getEncryptionKeyPair().getPrivate());
-        return new DecryptedMessageWithPubKey(decryptedDataTuple.getNetworkEnvelope(),
-                decryptedDataTuple.getSigPublicKey());
+    public DecryptedMessageWithPubKey decryptAndVerify(SealedAndSigned sealedAndSigned)
+            throws CryptoException, ProtobufferException {
+        CryptoException cryptoException = null;
+        ProtobufferException protobufferException = null;
+        for (KeyPair keyPair : encryptionKeyPairSet) {
+            try {
+                DecryptedDataTuple decryptedDataTuple = decryptHybridWithSignature(sealedAndSigned, keyPair.getPrivate());
+                return new DecryptedMessageWithPubKey(decryptedDataTuple.getNetworkEnvelope(),
+                        decryptedDataTuple.getSigPublicKey());
+            } catch (CryptoException e) {
+                cryptoException = e;
+            } catch (ProtobufferException e) {
+                protobufferException = e;
+            }
+        }
+        if (cryptoException != null) {
+            throw cryptoException;
+        }
+        if (protobufferException != null) {
+            throw protobufferException;
+        }
+        throw new RuntimeException("As we have at least 1 encryption key this case is not possible.");
     }
 
-    private static byte[] encryptPayloadWithHmac(NetworkEnvelope networkEnvelope, SecretKey secretKey) throws CryptoException {
+    private static byte[] encryptPayloadWithHmac(NetworkEnvelope networkEnvelope,
+                                                 SecretKey secretKey) throws CryptoException {
         return Encryption.encryptPayloadWithHmac(networkEnvelope.toProtoNetworkEnvelope().toByteArray(), secretKey);
     }
 
@@ -121,6 +150,10 @@ public class EncryptionService {
 
         // Pack all together
         return new SealedAndSigned(encryptedSecretKey, encryptedPayloadWithHmac, signature, signatureKeyPair.getPublic());
+    }
+
+    public void addEncryptionKeyPair(KeyPair encryptionKeyPair) {
+        encryptionKeyPairSet.add(encryptionKeyPair);
     }
 }
 

@@ -36,6 +36,8 @@ import bisq.common.util.Utilities;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import java.security.KeyPair;
+
 import java.io.File;
 
 import java.util.Collection;
@@ -136,13 +138,16 @@ public class OfferBookService {
     // API
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void addOffer(Offer offer, ResultHandler resultHandler, ErrorMessageHandler errorMessageHandler) {
+    public void addOffer(Offer offer,
+                         KeyPair signatureKeyPair,
+                         ResultHandler resultHandler,
+                         ErrorMessageHandler errorMessageHandler) {
         if (filterManager.requireUpdateToNewVersionForTrading()) {
             errorMessageHandler.handleErrorMessage(Res.get("popup.warning.mandatoryUpdate.trading"));
             return;
         }
 
-        boolean result = p2PService.addProtectedStorageEntry(offer.getOfferPayload());
+        boolean result = p2PService.addProtectedStorageEntry(offer.getOfferPayload(), signatureKeyPair);
         if (result) {
             resultHandler.handleResult();
         } else {
@@ -167,9 +172,10 @@ public class OfferBookService {
     }
 
     public void activateOffer(Offer offer,
+                              KeyPair signatureKeyPair,
                               @Nullable ResultHandler resultHandler,
                               @Nullable ErrorMessageHandler errorMessageHandler) {
-        addOffer(offer, resultHandler, errorMessageHandler);
+        addOffer(offer, signatureKeyPair, resultHandler, errorMessageHandler);
     }
 
     public void deactivateOffer(OfferPayload offerPayload,

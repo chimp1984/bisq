@@ -75,6 +75,7 @@ import javafx.beans.property.ReadOnlyIntegerProperty;
 import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 
+import java.security.KeyPair;
 import java.security.PublicKey;
 
 import java.util.ArrayList;
@@ -524,11 +525,21 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     // TODO OfferAvailabilityResponse is called twice!
-    public void sendEncryptedDirectMessage(NodeAddress peerNodeAddress, PubKeyRing pubKeyRing, NetworkEnvelope message,
+    public void sendEncryptedDirectMessage(NodeAddress peerNodeAddress,
+                                           PubKeyRing pubKeyRing,
+                                           NetworkEnvelope message,
+                                           SendDirectMessageListener sendDirectMessageListener) {
+        sendEncryptedDirectMessage(peerNodeAddress, pubKeyRing, keyRing.getSignatureKeyPair(), message, sendDirectMessageListener);
+    }
+
+    public void sendEncryptedDirectMessage(NodeAddress peerNodeAddress,
+                                           PubKeyRing pubKeyRing,
+                                           KeyPair signatureKeyPair,
+                                           NetworkEnvelope message,
                                            SendDirectMessageListener sendDirectMessageListener) {
         checkNotNull(peerNodeAddress, "PeerAddress must not be null (sendEncryptedDirectMessage)");
         if (isBootstrapped()) {
-            doSendEncryptedDirectMessage(peerNodeAddress, pubKeyRing, message, sendDirectMessageListener);
+            doSendEncryptedDirectMessage(peerNodeAddress, pubKeyRing, signatureKeyPair, message, sendDirectMessageListener);
         } else {
             throw new NetworkNotReadyException();
         }
@@ -536,6 +547,14 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
 
     private void doSendEncryptedDirectMessage(@NotNull NodeAddress peersNodeAddress,
                                               PubKeyRing pubKeyRing,
+                                              NetworkEnvelope message,
+                                              SendDirectMessageListener sendDirectMessageListener) {
+        doSendEncryptedDirectMessage(peersNodeAddress, pubKeyRing, keyRing.getSignatureKeyPair(), message, sendDirectMessageListener);
+    }
+
+    private void doSendEncryptedDirectMessage(@NotNull NodeAddress peersNodeAddress,
+                                              PubKeyRing pubKeyRing,
+                                              KeyPair signatureKeyPair,
                                               NetworkEnvelope message,
                                               SendDirectMessageListener sendDirectMessageListener) {
         log.debug("Send encrypted direct message {} to peer {}",
@@ -560,6 +579,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
             // send it if peer has not updated.
             PrefixedSealedAndSignedMessage sealedMsg = getPrefixedSealedAndSignedMessage(peersNodeAddress,
                     pubKeyRing,
+                    signatureKeyPair,
                     message);
 
             SettableFuture<Connection> future = networkNode.sendMessage(peersNodeAddress, sealedMsg);
@@ -584,8 +604,17 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         }
     }
 
+    //KeyPair signatureKeyPair
+
     private PrefixedSealedAndSignedMessage getPrefixedSealedAndSignedMessage(NodeAddress peersNodeAddress,
                                                                              PubKeyRing pubKeyRing,
+                                                                             NetworkEnvelope message) throws CryptoException {
+        return getPrefixedSealedAndSignedMessage(peersNodeAddress, pubKeyRing, keyRing.getSignatureKeyPair(), message);
+    }
+
+    private PrefixedSealedAndSignedMessage getPrefixedSealedAndSignedMessage(NodeAddress peersNodeAddress,
+                                                                             PubKeyRing pubKeyRing,
+                                                                             KeyPair signatureKeyPair,
                                                                              NetworkEnvelope message) throws CryptoException {
         byte[] addressPrefixHash;
         if (peerManager.peerHasCapability(peersNodeAddress, Capability.NO_ADDRESS_PRE_FIX)) {
@@ -597,7 +626,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
         }
         return new PrefixedSealedAndSignedMessage(
                 networkNode.getNodeAddress(),
-                encryptionService.encryptAndSign(pubKeyRing, message),
+                encryptionService.encryptAndSign(pubKeyRing, signatureKeyPair, message),
                 addressPrefixHash,
                 UUID.randomUUID().toString());
     }
@@ -607,7 +636,16 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     // MailboxMessages
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    public void sendEncryptedMailboxMessage(NodeAddress peer, PubKeyRing peersPubKeyRing,
+    public void sendEncryptedMailboxMessage(NodeAddress peer,
+                                            PubKeyRing peersPubKeyRing,
+                                            NetworkEnvelope message,
+                                            SendMailboxMessageListener sendMailboxMessageListener) {
+        sendEncryptedMailboxMessage(peer, peersPubKeyRing, keyRing.getSignatureKeyPair(), message, sendMailboxMessageListener);
+    }
+
+    public void sendEncryptedMailboxMessage(NodeAddress peer,
+                                            PubKeyRing peersPubKeyRing,
+                                            KeyPair signatureKeyPair,
                                             NetworkEnvelope message,
                                             SendMailboxMessageListener sendMailboxMessageListener) {
         if (peersPubKeyRing == null) {
@@ -641,7 +679,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
                     + "\nEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\n", message);
 
             PrefixedSealedAndSignedMessage prefixedSealedAndSignedMessage = getPrefixedSealedAndSignedMessage(peer,
-                    peersPubKeyRing, message);
+                    peersPubKeyRing, signatureKeyPair, message);
 
             log.debug("sendEncryptedMailboxMessage msg={},  peersNodeAddress={}", message, peer);
             SettableFuture<Connection> future = networkNode.sendMessage(peer, prefixedSealedAndSignedMessage);
@@ -805,9 +843,13 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     }
 
     public boolean addProtectedStorageEntry(ProtectedStoragePayload protectedStoragePayload) {
+        return addProtectedStorageEntry(protectedStoragePayload, keyRing.getSignatureKeyPair());
+    }
+
+    public boolean addProtectedStorageEntry(ProtectedStoragePayload protectedStoragePayload, KeyPair signatureKeyPair) {
         if (isBootstrapped()) {
             try {
-                ProtectedStorageEntry protectedStorageEntry = p2PDataStorage.getProtectedStorageEntry(protectedStoragePayload, keyRing.getSignatureKeyPair());
+                ProtectedStorageEntry protectedStorageEntry = p2PDataStorage.getProtectedStorageEntry(protectedStoragePayload, signatureKeyPair);
                 return p2PDataStorage.addProtectedStorageEntry(protectedStorageEntry, networkNode.getNodeAddress(), null);
             } catch (CryptoException e) {
                 log.error("Signing at getDataWithSignedSeqNr failed. That should never happen.");

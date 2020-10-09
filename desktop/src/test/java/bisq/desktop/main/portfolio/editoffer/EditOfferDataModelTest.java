@@ -107,7 +107,7 @@ public class EditOfferDataModelTest {
 
         when(user.getPaymentAccount(anyString())).thenReturn(bitcoinClashicAccount);
 
-        model.applyOpenOffer(new OpenOffer(make(btcBCHCOffer)));
+        model.applyOpenOffer(new OpenOffer(make(btcBCHCOffer), signatureKeyPair, encryptionKeyPair));
         assertNull(model.getPreselectedPaymentAccount());
     }
 

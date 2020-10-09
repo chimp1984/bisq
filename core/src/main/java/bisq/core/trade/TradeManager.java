@@ -81,6 +81,8 @@ import javafx.collections.ObservableList;
 
 import org.bouncycastle.crypto.params.KeyParameter;
 
+import java.security.KeyPair;
+
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -253,7 +255,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     openOffer.getMediatorNodeAddress(),
                     openOffer.getRefundAgentNodeAddress(),
                     btcWalletService,
-                    getNewProcessModel(offer));
+                    getNewProcessModelForMaker(offer, openOffer.getSignatureKeyPair()));
         } else {
             trade = new SellerAsMakerTrade(offer,
                     Coin.valueOf(inputsForDepositTxRequest.getTxFee()),
@@ -263,7 +265,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                     openOffer.getMediatorNodeAddress(),
                     openOffer.getRefundAgentNodeAddress(),
                     btcWalletService,
-                    getNewProcessModel(offer));
+                    getNewProcessModelForMaker(offer, openOffer.getSignatureKeyPair()));
         }
         TradeProtocol tradeProtocol = TradeProtocolFactory.getNewTradeProtocol(trade);
         tradeProtocolByTradeId.put(trade.getId(), tradeProtocol);
@@ -391,7 +393,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                                     model.getSelectedMediator(),
                                     model.getSelectedRefundAgent(),
                                     btcWalletService,
-                                    getNewProcessModel(offer));
+                                    getNewProcessModelForTaker(offer));
                         } else {
                             trade = new BuyerAsTakerTrade(offer,
                                     amount,
@@ -404,7 +406,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
                                     model.getSelectedMediator(),
                                     model.getSelectedRefundAgent(),
                                     btcWalletService,
-                                    getNewProcessModel(offer));
+                                    getNewProcessModelForTaker(offer));
                         }
                         trade.getProcessModel().setUseSavingsWallet(useSavingsWallet);
                         trade.getProcessModel().setFundsNeededForTradeAsLong(fundsNeededForTrade.value);
@@ -425,10 +427,18 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
         requestPersistence();
     }
 
-    private ProcessModel getNewProcessModel(Offer offer) {
+    private ProcessModel getNewProcessModelForMaker(Offer offer, KeyPair signatureKeyPair) {
         return new ProcessModel(checkNotNull(offer).getId(),
                 processModelServiceProvider.getUser().getAccountId(),
-                processModelServiceProvider.getKeyRing().getPubKeyRing());
+                offer.getPubKeyRing(),
+                signatureKeyPair);
+    }
+
+    private ProcessModel getNewProcessModelForTaker(Offer offer) {
+        return new ProcessModel(checkNotNull(offer).getId(),
+                processModelServiceProvider.getUser().getAccountId(),
+                keyRing.getPubKeyRing(),
+                keyRing.getSignatureKeyPair());
     }
 
     private OfferAvailabilityModel getOfferAvailabilityModel(Offer offer) {
@@ -646,7 +656,7 @@ public class TradeManager implements PersistedDataHost, DecryptedDirectMessageLi
     }
 
     public boolean isMyOffer(Offer offer) {
-        return offer.isMyOffer(keyRing);
+        return offer.isMyOffer(keyRing.getPubKeyRing());
     }
 
     public boolean wasOfferAlreadyUsedInTrade(String offerId) {

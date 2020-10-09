@@ -27,6 +27,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.security.PublicKey;
 
+import java.util.Arrays;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +44,8 @@ public final class PubKeyRing implements NetworkPayload, UsedForTradeContractJso
     private final byte[] signaturePubKeyBytes;
     private final byte[] encryptionPubKeyBytes;
 
-    private transient PublicKey signaturePubKey;
-    private transient PublicKey encryptionPubKey;
+    private final transient PublicKey signaturePubKey;
+    private final transient PublicKey encryptionPubKey;
 
     public PubKeyRing(PublicKey signaturePubKey, PublicKey encryptionPubKey) {
         this.signaturePubKeyBytes = Sig.getPublicKeyBytes(signaturePubKey);
@@ -77,6 +79,30 @@ public final class PubKeyRing implements NetworkPayload, UsedForTradeContractJso
         return new PubKeyRing(
                 proto.getSignaturePubKeyBytes().toByteArray(),
                 proto.getEncryptionPubKeyBytes().toByteArray());
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof PubKeyRing)) return false;
+
+        PubKeyRing that = (PubKeyRing) o;
+
+        if (!Arrays.equals(signaturePubKeyBytes, that.signaturePubKeyBytes)) return false;
+        if (!Arrays.equals(encryptionPubKeyBytes, that.encryptionPubKeyBytes)) return false;
+        if (signaturePubKey != null ? !signaturePubKey.equals(that.signaturePubKey) : that.signaturePubKey != null)
+            return false;
+        return encryptionPubKey != null ? encryptionPubKey.equals(that.encryptionPubKey) : that.encryptionPubKey == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Arrays.hashCode(signaturePubKeyBytes);
+        result = 31 * result + Arrays.hashCode(encryptionPubKeyBytes);
+        result = 31 * result + (signaturePubKey != null ? signaturePubKey.hashCode() : 0);
+        result = 31 * result + (encryptionPubKey != null ? encryptionPubKey.hashCode() : 0);
+        return result;
     }
 
     @Override

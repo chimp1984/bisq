@@ -17,8 +17,13 @@
 
 package bisq.common.crypto;
 
+import java.security.KeyFactory;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 
 import java.util.Base64;
@@ -36,5 +41,16 @@ public class CryptoUtils {
         byte[] bytes = new byte[size];
         new SecureRandom().nextBytes(bytes);
         return bytes;
+    }
+
+    public static PrivateKey getPrivateKeyFromEncodedKey(KeyStorage.KeyEntry keyEntry, byte[] privKey)
+            throws NoSuchAlgorithmException, InvalidKeySpecException {
+        KeyFactory keyFactory = KeyFactory.getInstance(keyEntry.getAlgorithm());
+        PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(privKey);
+        return keyFactory.generatePrivate(privateKeySpec);
+    }
+
+    public static byte[] getEncodedPrivateKey(PrivateKey privateKey) {
+        return new PKCS8EncodedKeySpec(privateKey.getEncoded()).getEncoded();
     }
 }

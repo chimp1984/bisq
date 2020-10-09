@@ -31,8 +31,14 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.interfaces.DSAParams;
+import java.security.interfaces.DSAPrivateKey;
+import java.security.spec.DSAPublicKeySpec;
 import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
+
+import java.math.BigInteger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -137,5 +143,19 @@ public class Sig {
 
     public static byte[] getPublicKeyBytes(PublicKey sigPublicKey) {
         return new X509EncodedKeySpec(sigPublicKey.getEncoded()).getEncoded();
+    }
+
+
+    public static PublicKey getPublicSignatureKey(PrivateKey privateKey)
+            throws NoSuchAlgorithmException, InvalidKeySpecException {
+        DSAPrivateKey privateDSAKey = (DSAPrivateKey) privateKey;
+        DSAParams params = privateDSAKey.getParams();
+        BigInteger p = params.getP();
+        BigInteger q = params.getQ();
+        BigInteger g = params.getG();
+        BigInteger y = g.modPow(privateDSAKey.getX(), p);
+        KeySpec keySpec = new DSAPublicKeySpec(y, p, q, g);
+        KeyFactory keyFactory = KeyFactory.getInstance(KeyStorage.KeyEntry.MSG_SIGNATURE.getAlgorithm());
+        return keyFactory.generatePublic(keySpec);
     }
 }

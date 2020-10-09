@@ -98,7 +98,7 @@ public class FailedTradesManager implements PersistedDataHost {
     }
 
     public boolean wasMyOffer(Offer offer) {
-        return offer.isMyOffer(keyRing);
+        return offer.isMyOffer(keyRing.getPubKeyRing());
     }
 
     public ObservableList<Trade> getObservableList() {
