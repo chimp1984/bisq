@@ -99,10 +99,10 @@ public class TorNetworkNode extends NetworkNode {
     public void start(@Nullable SetupListener setupListener) {
         torMode.doRollingBackup();
 
-        if (setupListener != null)
+        if (setupListener != null) {
             addSetupListener(setupListener);
+        }
 
-        // Create the tor node (takes about 6 sec.)
         createTorAndHiddenService(Utils.findFreeSystemPort(), servicePort);
     }
 
@@ -190,8 +190,9 @@ public class TorNetworkNode extends NetworkNode {
                      * The risk seems worth it compared to the risk of not shutting down tor.
                      */
                     tor = Tor.getDefault();
-                    if (tor != null)
+                    if (tor != null) {
                         tor.shutdown();
+                    }
                     log.debug("Shutdown torNetworkNode done after " + (System.currentTimeMillis() - ts) + " ms.");
                 } catch (Throwable e) {
                     log.error("Shutdown torNetworkNode failed with exception: " + e.getMessage());
@@ -246,39 +247,39 @@ public class TorNetworkNode extends NetworkNode {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    // create tor
+    // Create tor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     private void createTorAndHiddenService(int localPort, int servicePort) {
         ListenableFuture<Void> future = executorService.submit(() -> {
             try {
-                // get tor
                 Tor.setDefault(torMode.getTor());
 
                 // start hidden service
-                long ts2 = new Date().getTime();
+                long ts = new Date().getTime();
                 hiddenServiceSocket = new HiddenServiceSocket(localPort, torMode.getHiddenServiceDirectory(), servicePort);
                 nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+
                 UserThread.execute(() -> setupListeners.forEach(SetupListener::onTorNodeReady));
+
                 hiddenServiceSocket.addReadyListener(socket -> {
                     try {
                         log.info("\n################################################################\n" +
                                         "Tor hidden service published after {} ms. Socket={}\n" +
                                         "################################################################",
-                                (new Date().getTime() - ts2), socket); //takes usually 30-40 sec
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                try {
-                                    nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
-                                    startServer(socket);
-                                    UserThread.execute(() -> setupListeners.forEach(SetupListener::onHiddenServicePublished));
-                                } catch (final Exception e1) {
-                                    log.error(e1.toString());
-                                    e1.printStackTrace();
-                                }
+                                (new Date().getTime() - ts), socket);
+                        new Thread(() -> {
+                            try {
+                                nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+
+                                startServer(socket);
+
+                                UserThread.execute(() -> setupListeners.forEach(SetupListener::onHiddenServicePublished));
+                            } catch (Exception e1) {
+                                log.error(e1.toString());
+                                e1.printStackTrace();
                             }
-                        }.start();
+                        }).start();
                     } catch (final Exception e) {
                         log.error(e.toString());
                         e.printStackTrace();
