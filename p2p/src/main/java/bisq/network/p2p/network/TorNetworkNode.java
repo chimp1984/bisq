@@ -53,22 +53,20 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-// Run in UserThread
+@Slf4j
 public class TorNetworkNode extends NetworkNode {
-
-    private static final Logger log = LoggerFactory.getLogger(TorNetworkNode.class);
-
     private static final int MAX_RESTART_ATTEMPTS = 5;
     private static final long SHUT_DOWN_TIMEOUT = 5;
 
+    private final boolean streamIsolation;
+    private final TorMode torMode;
 
     private HiddenServiceSocket hiddenServiceSocket;
     private Timer shutDownTimeoutTimer;
@@ -76,11 +74,6 @@ public class TorNetworkNode extends NetworkNode {
     @SuppressWarnings("FieldCanBeLocal")
     private MonadicBinding<Boolean> allShutDown;
     private Tor tor;
-
-    private TorMode torMode;
-
-    private boolean streamIsolation;
-
     private Socks5Proxy socksProxy;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +86,8 @@ public class TorNetworkNode extends NetworkNode {
                           TorMode torMode) {
         super(servicePort, networkProtoResolver);
 
-        this.torMode = torMode;
         this.streamIsolation = useStreamIsolation;
+        this.torMode = torMode;
     }
 
 

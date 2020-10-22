@@ -17,19 +17,19 @@
 
 package bisq.network.p2p.network;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.stream.Collectors;
-
 import org.berndpruenster.netlayer.tor.NativeTor;
 import org.berndpruenster.netlayer.tor.Tor;
 import org.berndpruenster.netlayer.tor.TorCtlException;
 import org.berndpruenster.netlayer.tor.Torrc;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.LinkedHashMap;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -53,8 +53,12 @@ public class NewTor extends TorMode {
     private final String torrcOptions;
     private final Collection<String> bridgeEntries;
 
-    public NewTor(File torWorkingDirectory, @Nullable File torrcFile, String torrcOptions, Collection<String> bridgeEntries) {
+    public NewTor(File torWorkingDirectory,
+                  @Nullable File torrcFile,
+                  String torrcOptions,
+                  Collection<String> bridgeEntries) {
         super(torWorkingDirectory);
+
         this.torrcFile = torrcFile;
         this.torrcOptions = torrcOptions;
         this.bridgeEntries = bridgeEntries;
@@ -62,17 +66,18 @@ public class NewTor extends TorMode {
 
     @Override
     public Tor getTor() throws IOException, TorCtlException {
-        long ts1 = new Date().getTime();
+        long ts = new Date().getTime();
 
-        if (bridgeEntries != null)
-            log.info("Using bridges: {}", bridgeEntries.stream().collect(Collectors.joining(",")));
+        if (bridgeEntries != null) {
+            log.info("Using bridges: {}", String.join(",", bridgeEntries));
+        }
 
-        Torrc override = null;
+        Torrc torrc = null;
 
         // check if the user wants to provide his own torrc file
         if (torrcFile != null) {
             try {
-                override = new Torrc(new FileInputStream(torrcFile));
+                torrc = new Torrc(new FileInputStream(torrcFile));
             } catch (IOException e) {
                 log.error("custom torrc file not found ('{}'). Proceeding with defaults.", torrcFile);
             }
@@ -87,28 +92,28 @@ public class NewTor extends TorMode {
                     String[] tmp = line.split("\\s", 2);
                     torrcOptionsMap.put(tmp[0].trim(), tmp[1].trim());
                 } else {
-                    log.error("custom torrc override parse error ('{}'). Proceeding without custom overrides.", line);
+                    log.error("custom torrc parse error ('{}'). Proceeding without custom overrides.", line);
                     torrcOptionsMap.clear();
                 }
             });
         }
 
-        // assemble final override options
+        // assemble final torrc options
         if (!torrcOptionsMap.isEmpty())
             // check for custom torrcFile
-            if (override != null)
+            if (torrc != null)
                 // and merge the contents
-                override = new Torrc(override.getInputStream$tor_native(), torrcOptionsMap);
+                torrc = new Torrc(torrc.getInputStream$tor_native(), torrcOptionsMap);
             else
-                override = new Torrc(torrcOptionsMap);
+                torrc = new Torrc(torrcOptionsMap);
 
         log.info("Starting tor");
-        NativeTor result = new NativeTor(torDir, bridgeEntries, override);
+        NativeTor result = new NativeTor(torDir, bridgeEntries, torrc);
         log.info(
-                "\n################################################################\n"
-                        + "Tor started after {} ms. Start publishing hidden service.\n"
-                        + "################################################################",
-                (new Date().getTime() - ts1)); // takes usually a few seconds
+                "\n################################################################\n" +
+                        "Tor started after {} ms. Start publishing hidden service.\n" +
+                        "################################################################",
+                (new Date().getTime() - ts)); // takes usually a few seconds
 
         return result;
     }

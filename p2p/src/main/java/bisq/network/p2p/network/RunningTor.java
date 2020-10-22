@@ -17,13 +17,13 @@
 
 package bisq.network.p2p.network;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Date;
-
 import org.berndpruenster.netlayer.tor.ExternalTor;
 import org.berndpruenster.netlayer.tor.Tor;
 import org.berndpruenster.netlayer.tor.TorCtlException;
+
+import java.io.File;
+
+import java.util.Date;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,16 +39,18 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public class RunningTor extends TorMode {
-
     private final int controlPort;
     private final String password;
     private final File cookieFile;
     private final boolean useSafeCookieAuthentication;
 
-
-    public RunningTor(final File torDir, final int controlPort, final String password, final File cookieFile,
-            final boolean useSafeCookieAuthentication) {
+    public RunningTor(File torDir,
+                      int controlPort,
+                      String password,
+                      File cookieFile,
+                      boolean useSafeCookieAuthentication) {
         super(torDir);
+
         this.controlPort = controlPort;
         this.password = password;
         this.cookieFile = cookieFile;
@@ -56,26 +58,26 @@ public class RunningTor extends TorMode {
     }
 
     @Override
-    public Tor getTor() throws IOException, TorCtlException {
-        long ts1 = new Date().getTime();
+    public Tor getTor() throws TorCtlException {
+        long ts = new Date().getTime();
 
         log.info("Connecting to running tor");
 
-        Tor result;
+        Tor tor;
         if (!password.isEmpty())
-            result = new ExternalTor(controlPort, password);
+            tor = new ExternalTor(controlPort, password);
         else if (cookieFile != null && cookieFile.exists())
-            result = new ExternalTor(controlPort, cookieFile, useSafeCookieAuthentication);
+            tor = new ExternalTor(controlPort, cookieFile, useSafeCookieAuthentication);
         else
-            result = new ExternalTor(controlPort);
+            tor = new ExternalTor(controlPort);
 
         log.info(
-                "\n################################################################\n"
-                        + "Connecting to Tor successful after {} ms. Start publishing hidden service.\n"
-                        + "################################################################",
-                (new Date().getTime() - ts1)); // takes usually a few seconds
+                "\n################################################################\n" +
+                        "Connecting to Tor successful after {} ms. Start publishing hidden service.\n" +
+                        "################################################################",
+                (new Date().getTime() - ts)); // takes usually a few seconds
 
-        return result;
+        return tor;
     }
 
     @Override
