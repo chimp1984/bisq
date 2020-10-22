@@ -57,8 +57,8 @@ public class PeerServiceTest {
 
     @Before
     public void setup() throws InterruptedException {
-        LocalhostNetworkNode.setSimulateTorDelayTorNode(50);
-        LocalhostNetworkNode.setSimulateTorDelayHiddenService(8);
+        LocalhostNetworkNode.setSimulateTorNodeReady(50);
+        LocalhostNetworkNode.setSimulateHiddenServiceReady(8);
 
         //noinspection ConstantConditions
         if (useLocalhostForP2P) {
@@ -96,8 +96,8 @@ public class PeerServiceTest {
 
     @Test
     public void testSingleSeedNode() throws InterruptedException {
-        LocalhostNetworkNode.setSimulateTorDelayTorNode(0);
-        LocalhostNetworkNode.setSimulateTorDelayHiddenService(0);
+        LocalhostNetworkNode.setSimulateTorNodeReady(0);
+        LocalhostNetworkNode.setSimulateHiddenServiceReady(0);
         seedNodeAddresses.clear();
 
         for (int i = 0; i < 10; i++) {
@@ -189,8 +189,8 @@ public class PeerServiceTest {
 
     //@Test
     public void test2SeedNodes() throws InterruptedException {
-        LocalhostNetworkNode.setSimulateTorDelayTorNode(0);
-        LocalhostNetworkNode.setSimulateTorDelayHiddenService(0);
+        LocalhostNetworkNode.setSimulateTorNodeReady(0);
+        LocalhostNetworkNode.setSimulateHiddenServiceReady(0);
         seedNodeAddresses.clear();
         NodeAddress nodeAddress1 = new NodeAddress("localhost:8001");
         seedNodeAddresses.add(nodeAddress1);
@@ -288,8 +288,8 @@ public class PeerServiceTest {
     // @Test
     public void testAuthentication() throws InterruptedException {
         log.debug("### start");
-        LocalhostNetworkNode.setSimulateTorDelayTorNode(0);
-        LocalhostNetworkNode.setSimulateTorDelayHiddenService(0);
+        LocalhostNetworkNode.setSimulateTorNodeReady(0);
+        LocalhostNetworkNode.setSimulateHiddenServiceReady(0);
         DummySeedNode seedNode1 = getAndStartSeedNode(8001);
         log.debug("### seedNode1");
         Thread.sleep(100);

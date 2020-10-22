@@ -74,7 +74,7 @@ public abstract class NetworkNode implements MessageListener {
     private final CopyOnWriteArraySet<MessageListener> messageListeners = new CopyOnWriteArraySet<>();
     private final CopyOnWriteArraySet<ConnectionListener> connectionListeners = new CopyOnWriteArraySet<>();
     final CopyOnWriteArraySet<SetupListener> setupListeners = new CopyOnWriteArraySet<>();
-    ListeningExecutorService executorService;
+    protected final ListeningExecutorService executorService;
     private Server server;
 
     private volatile boolean shutDownInProgress;
@@ -90,6 +90,8 @@ public abstract class NetworkNode implements MessageListener {
     NetworkNode(int servicePort, NetworkProtoResolver networkProtoResolver) {
         this.servicePort = servicePort;
         this.networkProtoResolver = networkProtoResolver;
+        executorService = Utilities.getListeningExecutorService("NetworkNode-" + servicePort,
+                15, 30, 60);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -383,7 +385,7 @@ public abstract class NetworkNode implements MessageListener {
 
     @Override
     public void onMessage(NetworkEnvelope networkEnvelope, Connection connection) {
-        messageListeners.stream().forEach(e -> e.onMessage(networkEnvelope, connection));
+        messageListeners.forEach(e -> e.onMessage(networkEnvelope, connection));
     }
 
 
@@ -423,19 +425,14 @@ public abstract class NetworkNode implements MessageListener {
     // Protected
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    void createExecutorService() {
-        if (executorService == null)
-            executorService = Utilities.getListeningExecutorService("NetworkNode-" + servicePort, 15, 30, 60);
-    }
-
     void startServer(ServerSocket serverSocket) {
-        final ConnectionListener connectionListener = new ConnectionListener() {
+        ConnectionListener connectionListener = new ConnectionListener() {
             @Override
             public void onConnection(Connection connection) {
                 if (!connection.isStopped()) {
                     inBoundConnections.add((InboundConnection) connection);
                     printInboundConnections();
-                    connectionListeners.stream().forEach(e -> e.onConnection(connection));
+                    connectionListeners.forEach(e -> e.onConnection(connection));
                 }
             }
 
@@ -445,17 +442,17 @@ public abstract class NetworkNode implements MessageListener {
                 //noinspection SuspiciousMethodCalls
                 inBoundConnections.remove(connection);
                 printInboundConnections();
-                connectionListeners.stream().forEach(e -> e.onDisconnect(closeConnectionReason, connection));
+                connectionListeners.forEach(e -> e.onDisconnect(closeConnectionReason, connection));
             }
 
             @Override
             public void onError(Throwable throwable) {
                 log.error("server.ConnectionListener.onError " + throwable.getMessage());
-                connectionListeners.stream().forEach(e -> e.onError(throwable));
+                connectionListeners.forEach(e -> e.onError(throwable));
             }
         };
         server = new Server(serverSocket,
-                NetworkNode.this,
+                this,
                 connectionListener,
                 networkProtoResolver);
         executorService.submit(server);
@@ -472,7 +469,7 @@ public abstract class NetworkNode implements MessageListener {
     private void printOutBoundConnections() {
         StringBuilder sb = new StringBuilder("outBoundConnections size()=")
                 .append(outBoundConnections.size()).append("\n\toutBoundConnections=");
-        outBoundConnections.stream().forEach(e -> sb.append(e).append("\n\t"));
+        outBoundConnections.forEach(e -> sb.append(e).append("\n\t"));
         log.debug(sb.toString());
     }
 
@@ -487,7 +484,7 @@ public abstract class NetworkNode implements MessageListener {
     private void printInboundConnections() {
         StringBuilder sb = new StringBuilder("inBoundConnections size()=")
                 .append(inBoundConnections.size()).append("\n\tinBoundConnections=");
-        inBoundConnections.stream().forEach(e -> sb.append(e).append("\n\t"));
+        inBoundConnections.forEach(e -> sb.append(e).append("\n\t"));
         log.debug(sb.toString());
     }
 

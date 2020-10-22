@@ -29,25 +29,17 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import org.jetbrains.annotations.Nullable;
 
-// Run in UserThread
+@Slf4j
 public class LocalhostNetworkNode extends NetworkNode {
-    private static final Logger log = LoggerFactory.getLogger(LocalhostNetworkNode.class);
-
-    private static int simulateTorDelayTorNode = 500;
-    private static int simulateTorDelayHiddenService = 500;
-
-    public static void setSimulateTorDelayTorNode(int simulateTorDelayTorNode) {
-        LocalhostNetworkNode.simulateTorDelayTorNode = simulateTorDelayTorNode;
-    }
-
-    public static void setSimulateTorDelayHiddenService(int simulateTorDelayHiddenService) {
-        LocalhostNetworkNode.simulateTorDelayHiddenService = simulateTorDelayHiddenService;
-    }
+    @Setter
+    private static int simulateTorNodeReady = 500;
+    @Setter
+    private static int simulateHiddenServiceReady = 500;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -60,28 +52,27 @@ public class LocalhostNetworkNode extends NetworkNode {
 
     @Override
     public void start(@Nullable SetupListener setupListener) {
-        if (setupListener != null)
+        if (setupListener != null) {
             addSetupListener(setupListener);
+        }
 
-        createExecutorService();
-
-        // simulate tor connection delay
+        // Simulate tor connection delay
         UserThread.runAfter(() -> {
             nodeAddressProperty.set(new NodeAddress("localhost", servicePort));
+            setupListeners.forEach(SetupListener::onTorNodeReady);
 
-            setupListeners.stream().forEach(SetupListener::onTorNodeReady);
-
-            // simulate tor HS publishing delay
+            // Simulate tor HS publishing delay
             UserThread.runAfter(() -> {
                 try {
                     startServer(new ServerSocket(servicePort));
+                    setupListeners.forEach(SetupListener::onHiddenServicePublished);
                 } catch (IOException e) {
                     e.printStackTrace();
-                    log.error("Exception at startServer: " + e.getMessage());
+                    log.error("Exception at startServer: {}", e.getMessage());
                 }
-                setupListeners.stream().forEach(SetupListener::onHiddenServicePublished);
-            }, simulateTorDelayTorNode, TimeUnit.MILLISECONDS);
-        }, simulateTorDelayHiddenService, TimeUnit.MILLISECONDS);
+            }, simulateHiddenServiceReady, TimeUnit.MILLISECONDS);
+
+        }, simulateTorNodeReady, TimeUnit.MILLISECONDS);
     }
 
     // Called from NetworkNode thread
