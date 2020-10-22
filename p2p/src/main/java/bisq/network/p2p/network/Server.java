@@ -27,90 +27,88 @@ import java.io.IOException;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
-// Runs in UserThread
+@Slf4j
 class Server implements Runnable {
-    private static final Logger log = LoggerFactory.getLogger(Server.class);
-
+    private final ServerSocket serverSocket;
     private final MessageListener messageListener;
     private final ConnectionListener connectionListener;
-
-    // accessed from different threads
-    private final ServerSocket serverSocket;
-    private final Set<Connection> connections = new CopyOnWriteArraySet<>();
-    private volatile boolean stopped;
     private final NetworkProtoResolver networkProtoResolver;
-
+    private final Set<Connection> connections = new CopyOnWriteArraySet<>();
+    private final AtomicBoolean terminated = new AtomicBoolean();
 
     public Server(ServerSocket serverSocket,
                   MessageListener messageListener,
                   ConnectionListener connectionListener,
                   NetworkProtoResolver networkProtoResolver) {
-        this.networkProtoResolver = networkProtoResolver;
         this.serverSocket = serverSocket;
         this.messageListener = messageListener;
         this.connectionListener = connectionListener;
+        this.networkProtoResolver = networkProtoResolver;
     }
 
     @Override
     public void run() {
         try {
-            // Thread created by NetworkNode
             Thread.currentThread().setName("Server-" + serverSocket.getLocalPort());
-            try {
-                while (!stopped && !Thread.currentThread().isInterrupted()) {
-                    log.debug("Ready to accept new clients on port " + serverSocket.getLocalPort());
-                    final Socket socket = serverSocket.accept();
-                    if (!stopped && !Thread.currentThread().isInterrupted()) {
-                        log.debug("Accepted new client on localPort/port " + socket.getLocalPort() + "/" + socket.getPort());
-                        InboundConnection connection = new InboundConnection(socket,
-                                messageListener,
-                                connectionListener,
-                                networkProtoResolver);
+            while (!terminated.get() && !Thread.currentThread().isInterrupted()) {
+                log.debug("Ready to accept new clients on port {}", serverSocket.getLocalPort());
+                Socket socket = serverSocket.accept();
+                if (!terminated.get() && !Thread.currentThread().isInterrupted()) {
+                    log.debug("Accepted new client on localPort {} / port {} ", socket.getLocalPort(), socket.getPort());
+                    InboundConnection connection = new InboundConnection(socket,
+                            messageListener,
+                            connectionListener,
+                            networkProtoResolver);
 
-                        log.debug("\n\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" +
-                                "Server created new inbound connection:"
-                                + "\nlocalPort/port={}/{}"
-                                + "\nconnection.uid={}", serverSocket.getLocalPort(), socket.getPort(), connection.getUid()
-                                + "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n");
+                    log.debug("\n\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n" +
+                                    "Server created new inbound connection:\n" +
+                                    "localPort/port={}/{}\n" +
+                                    "connection.uid={}\n" +
+                                    "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n",
+                            serverSocket.getLocalPort(), socket.getPort(), connection.getUid());
 
-                        if (!stopped)
-                            connections.add(connection);
-                        else
-                            connection.shutDown(CloseConnectionReason.APP_SHUT_DOWN);
+                    if (!terminated.get()) {
+                        connections.add(connection);
+                    } else {
+                        connection.shutDown(CloseConnectionReason.APP_SHUT_DOWN);
                     }
                 }
-            } catch (IOException e) {
-                if (!stopped)
-                    e.printStackTrace();
+            }
+        } catch (IOException e) {
+            if (!terminated.get()) {
+                e.printStackTrace();
             }
         } catch (Throwable t) {
-            log.error("Executing task failed. " + t.getMessage());
+            log.error(t.getMessage());
             t.printStackTrace();
         }
     }
 
     public void shutDown() {
-        if (!stopped) {
-            stopped = true;
+        if (terminated.get()) {
+            log.warn("We got already terminated");
+            return;
+        }
 
-            connections.stream().forEach(c -> c.shutDown(CloseConnectionReason.APP_SHUT_DOWN));
+        terminated.set(true);
 
-            try {
-                if (!serverSocket.isClosed())
-                    serverSocket.close();
-            } catch (SocketException e) {
-                log.debug("SocketException at shutdown might be expected " + e.getMessage());
-            } catch (IOException e) {
-                log.debug("Exception at shutdown. " + e.getMessage());
-            } finally {
-                log.debug("Server shutdown complete");
+        connections.forEach(c -> c.shutDown(CloseConnectionReason.APP_SHUT_DOWN));
+        connections.clear();
+
+        try {
+            if (!serverSocket.isClosed()) {
+                serverSocket.close();
             }
-        } else {
-            log.warn("stopped already called ast shutdown");
+        } catch (SocketException e) {
+            log.debug("SocketException at shutdown might be expected {}", e.getMessage());
+        } catch (IOException e) {
+            log.debug("Exception at shutdown. {}", e.getMessage());
+        } finally {
+            log.debug("Server shutdown complete");
         }
     }
 }
