@@ -171,26 +171,28 @@ public class TorNetworkNode extends NetworkNode {
     private void createTorAndHiddenService(int localPort, int servicePort) {
         ListenableFuture<Void> future = executorService.submit(() -> {
             try {
+                long ts = new Date().getTime();
                 Tor.setDefault(torMode.getTor());
 
-                // start hidden service
-                long ts = new Date().getTime();
+                // Start hidden service
                 hiddenServiceSocket = new HiddenServiceSocket(localPort, torMode.getHiddenServiceDirectory(), servicePort);
-                nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
 
-                UserThread.execute(() -> setupListeners.forEach(SetupListener::onTorNodeReady));
-
+                UserThread.execute(() -> {
+                    nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+                    setupListeners.forEach(SetupListener::onTorNodeReady);
+                });
                 hiddenServiceSocket.addReadyListener(socket -> {
                     try {
                         log.info("\n################################################################\n" +
                                         "Tor hidden service published after {} ms. Socket={}\n" +
                                         "################################################################",
                                 new Date().getTime() - ts, socket);
-                        nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
 
-                        startServer(socket);
-
-                        UserThread.execute(() -> setupListeners.forEach(SetupListener::onHiddenServicePublished));
+                        UserThread.execute(() -> {
+                            nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+                            startServer(socket);
+                            setupListeners.forEach(SetupListener::onHiddenServicePublished);
+                        });
                     } catch (Throwable e) {
                         log.error(e.toString());
                         e.printStackTrace();
@@ -207,7 +209,7 @@ public class TorNetworkNode extends NetworkNode {
                     // shutdown needed either
                     UserThread.execute(() -> setupListeners.forEach(listener -> listener.onSetupFailed(new RuntimeException(msg))));
                 } else {
-                    restartTor(e.getMessage());
+                    UserThread.execute(() -> restartTor(e.getMessage()));
                 }
             } catch (IOException e) {
                 log.error("Could not connect to running Tor: {}", e.getMessage());
@@ -225,7 +227,8 @@ public class TorNetworkNode extends NetworkNode {
             }
 
             public void onFailure(@NotNull Throwable throwable) {
-                UserThread.execute(() -> log.error("Hidden service creation failed: {}", throwable.toString()));
+                log.error("Hidden service creation failed: {}", throwable.toString());
+                UserThread.execute(() -> setupListeners.forEach(listener -> listener.onSetupFailed(new RuntimeException(throwable.toString()))));
             }
         }, MoreExecutors.directExecutor());
     }
@@ -239,7 +242,7 @@ public class TorNetworkNode extends NetworkNode {
         log.info("Restart Tor");
         restartCounter++;
         if (restartCounter <= MAX_RESTART_ATTEMPTS) {
-            UserThread.execute(() -> setupListeners.forEach(SetupListener::onRequestCustomBridges));
+            setupListeners.forEach(SetupListener::onRequestCustomBridges);
             log.warn("We stop tor as starting tor with the default bridges failed. We request user to add custom bridges.");
             shutDown(null);
         } else {
