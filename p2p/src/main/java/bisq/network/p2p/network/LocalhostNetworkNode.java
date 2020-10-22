@@ -22,6 +22,8 @@ import bisq.network.p2p.NodeAddress;
 import bisq.common.UserThread;
 import bisq.common.proto.network.NetworkProtoResolver;
 
+import com.runjva.sourceforge.jsocks.protocol.Socks5Proxy;
+
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -79,5 +81,11 @@ public class LocalhostNetworkNode extends NetworkNode {
     @Override
     protected Socket createSocket(NodeAddress peerNodeAddress) throws IOException {
         return new Socket(peerNodeAddress.getHostName(), peerNodeAddress.getPort());
+    }
+
+    @Nullable
+    @Override
+    public Socks5Proxy getSocksProxy() {
+        return null;
     }
 }
