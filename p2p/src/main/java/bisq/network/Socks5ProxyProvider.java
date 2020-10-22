@@ -17,11 +17,11 @@
 
 package bisq.network;
 
-import com.runjva.sourceforge.jsocks.protocol.Socks5Proxy;
-
 import bisq.network.p2p.network.NetworkNode;
 
 import bisq.common.config.Config;
+
+import com.runjva.sourceforge.jsocks.protocol.Socks5Proxy;
 
 import com.google.inject.Inject;
 
@@ -29,8 +29,7 @@ import javax.inject.Named;
 
 import java.net.UnknownHostException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
 
@@ -45,9 +44,8 @@ import javax.annotation.Nullable;
  * requests.
  * If no socks5ProxyBtcAddress and no socks5ProxyHttpAddress is defined (default) we use socks5ProxyInternal.
  */
+@Slf4j
 public class Socks5ProxyProvider {
-    private static final Logger log = LoggerFactory.getLogger(Socks5ProxyProvider.class);
-
     @Nullable
     private NetworkNode socks5ProxyInternalFactory;
 
@@ -88,7 +86,9 @@ public class Socks5ProxyProvider {
 
     @Nullable
     public Socks5Proxy getSocks5ProxyInternal() {
-        return socks5ProxyInternalFactory.getSocksProxy();
+        return socks5ProxyInternalFactory != null ?
+                socks5ProxyInternalFactory.getSocksProxy() :
+                null;
     }
 
     public void setSocks5ProxyInternal(@Nullable NetworkNode bisqSocks5ProxyFactory) {
@@ -101,7 +101,7 @@ public class Socks5ProxyProvider {
             String[] tokens = socks5ProxyAddress.split(":");
             if (tokens.length == 2) {
                 try {
-                    return new Socks5Proxy(tokens[0], Integer.valueOf(tokens[1]));
+                    return new Socks5Proxy(tokens[0], Integer.parseInt(tokens[1]));
                 } catch (UnknownHostException e) {
                     log.error(e.getMessage());
                     e.printStackTrace();
