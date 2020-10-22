@@ -268,18 +268,16 @@ public class TorNetworkNode extends NetworkNode {
                                         "Tor hidden service published after {} ms. Socket={}\n" +
                                         "################################################################",
                                 (new Date().getTime() - ts), socket);
-                        new Thread(() -> {
-                            try {
-                                nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+                        try {
+                            nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
 
-                                startServer(socket);
+                            startServer(socket);
 
-                                UserThread.execute(() -> setupListeners.forEach(SetupListener::onHiddenServicePublished));
-                            } catch (Exception e1) {
-                                log.error(e1.toString());
-                                e1.printStackTrace();
-                            }
-                        }).start();
+                            UserThread.execute(() -> setupListeners.forEach(SetupListener::onHiddenServicePublished));
+                        } catch (Exception e1) {
+                            log.error(e1.toString());
+                            e1.printStackTrace();
+                        }
                     } catch (final Exception e) {
                         log.error(e.toString());
                         e.printStackTrace();
