@@ -31,7 +31,7 @@ import bisq.core.payment.PaymentAccount;
 import bisq.core.payment.PaymentAccountUtil;
 import bisq.core.setup.CoreNetworkCapabilities;
 
-import bisq.network.p2p.network.BridgeAddressProvider;
+import bisq.network.p2p.network.tor.BridgeAddressProvider;
 
 import bisq.common.config.BaseCurrencyNetwork;
 import bisq.common.config.Config;

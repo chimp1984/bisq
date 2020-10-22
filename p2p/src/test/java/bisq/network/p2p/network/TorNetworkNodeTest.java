@@ -19,6 +19,8 @@ package bisq.network.p2p.network;
 
 import bisq.network.p2p.TestUtils;
 import bisq.network.p2p.mocks.MockPayload;
+import bisq.network.p2p.network.tor.NewTor;
+import bisq.network.p2p.network.tor.TorNetworkNode;
 
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
@@ -27,6 +29,7 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.io.File;
 import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 

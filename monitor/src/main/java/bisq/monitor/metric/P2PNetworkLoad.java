@@ -31,7 +31,7 @@ import bisq.network.p2p.network.Connection;
 import bisq.network.p2p.network.MessageListener;
 import bisq.network.p2p.network.NetworkNode;
 import bisq.network.p2p.network.SetupListener;
-import bisq.network.p2p.network.TorNetworkNode;
+import bisq.network.p2p.network.tor.TorNetworkNode;
 import bisq.network.p2p.peers.PeerManager;
 import bisq.network.p2p.peers.keepalive.KeepAliveManager;
 import bisq.network.p2p.peers.peerexchange.PeerExchangeManager;

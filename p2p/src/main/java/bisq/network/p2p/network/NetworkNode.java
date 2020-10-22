@@ -79,7 +79,7 @@ public abstract class NetworkNode implements MessageListener, ConnectionListener
     // Constructor
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    NetworkNode(int servicePort, NetworkProtoResolver networkProtoResolver) {
+    protected NetworkNode(int servicePort, NetworkProtoResolver networkProtoResolver) {
         this.servicePort = servicePort;
         this.networkProtoResolver = networkProtoResolver;
 

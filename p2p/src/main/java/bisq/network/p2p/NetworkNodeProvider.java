@@ -17,20 +17,19 @@
 
 package bisq.network.p2p;
 
-import bisq.network.p2p.network.BridgeAddressProvider;
-import bisq.network.p2p.network.LocalhostNetworkNode;
 import bisq.network.p2p.network.NetworkNode;
-import bisq.network.p2p.network.NewTor;
-import bisq.network.p2p.network.RunningTor;
-import bisq.network.p2p.network.TorNetworkNode;
+import bisq.network.p2p.network.localhost.LocalhostNetworkNode;
+import bisq.network.p2p.network.tor.BridgeAddressProvider;
+import bisq.network.p2p.network.tor.NewTor;
+import bisq.network.p2p.network.tor.RunningTor;
+import bisq.network.p2p.network.tor.TorNetworkNode;
 
 import bisq.common.config.Config;
 import bisq.common.proto.network.NetworkProtoResolver;
 
-import javax.inject.Provider;
-import javax.inject.Named;
-
 import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Provider;
 
 import java.io.File;
 

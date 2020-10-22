@@ -15,7 +15,7 @@
  * along with bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p.network;
+package bisq.network.p2p.network.tor;
 
 import java.util.Arrays;
 import java.util.List;

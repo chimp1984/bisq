@@ -15,10 +15,12 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p.network;
+package bisq.network.p2p.network.tor;
 
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.Utils;
+import bisq.network.p2p.network.NetworkNode;
+import bisq.network.p2p.network.SetupListener;
 
 import bisq.common.Timer;
 import bisq.common.UserThread;

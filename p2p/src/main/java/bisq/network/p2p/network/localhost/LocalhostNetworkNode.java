@@ -15,9 +15,11 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p.network;
+package bisq.network.p2p.network.localhost;
 
 import bisq.network.p2p.NodeAddress;
+import bisq.network.p2p.network.NetworkNode;
+import bisq.network.p2p.network.SetupListener;
 
 import bisq.common.UserThread;
 import bisq.common.proto.network.NetworkProtoResolver;

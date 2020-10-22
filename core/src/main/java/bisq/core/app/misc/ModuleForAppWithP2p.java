@@ -32,7 +32,7 @@ import bisq.core.user.User;
 
 import bisq.network.crypto.EncryptionServiceModule;
 import bisq.network.p2p.P2PModule;
-import bisq.network.p2p.network.BridgeAddressProvider;
+import bisq.network.p2p.network.tor.BridgeAddressProvider;
 import bisq.network.p2p.seed.SeedNodeRepository;
 
 import bisq.common.ClockWatcher;

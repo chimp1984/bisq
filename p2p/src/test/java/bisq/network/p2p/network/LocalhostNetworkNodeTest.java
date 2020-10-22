@@ -18,6 +18,7 @@
 package bisq.network.p2p.network;
 
 import bisq.network.p2p.TestUtils;
+import bisq.network.p2p.network.localhost.LocalhostNetworkNode;
 
 import java.io.IOException;
 

@@ -29,8 +29,8 @@ import bisq.core.app.TorSetup;
 import bisq.core.locale.Res;
 import bisq.core.user.Preferences;
 
-import bisq.network.p2p.network.DefaultPluggableTransports;
 import bisq.network.p2p.network.NetworkNode;
+import bisq.network.p2p.network.tor.DefaultPluggableTransports;
 
 import bisq.common.UserThread;
 import bisq.common.util.Tuple2;

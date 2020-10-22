@@ -21,7 +21,7 @@ import bisq.core.trade.Trade;
 import bisq.core.trade.protocol.tasks.TradeTask;
 import bisq.core.trade.statistics.TradeStatistics3;
 
-import bisq.network.p2p.network.TorNetworkNode;
+import bisq.network.p2p.network.tor.TorNetworkNode;
 
 import bisq.common.app.Capability;
 import bisq.common.taskrunner.TaskRunner;

@@ -50,7 +50,7 @@ import bisq.network.p2p.DecryptedDirectMessageListener;
 import bisq.network.p2p.DecryptedMessageWithPubKey;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.P2PService;
-import bisq.network.p2p.network.TorNetworkNode;
+import bisq.network.p2p.network.tor.TorNetworkNode;
 
 import bisq.common.ClockWatcher;
 import bisq.common.config.Config;

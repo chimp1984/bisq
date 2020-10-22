@@ -17,7 +17,7 @@
 
 package bisq.network.p2p;
 
-import bisq.network.p2p.network.LocalhostNetworkNode;
+import bisq.network.p2p.network.localhost.LocalhostNetworkNode;
 
 import java.util.ArrayList;
 import java.util.HashSet;

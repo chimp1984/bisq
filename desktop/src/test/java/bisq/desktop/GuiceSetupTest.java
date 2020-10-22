@@ -48,7 +48,7 @@ import bisq.core.user.Preferences;
 import bisq.core.user.User;
 import bisq.core.util.coin.BsqFormatter;
 
-import bisq.network.p2p.network.BridgeAddressProvider;
+import bisq.network.p2p.network.tor.BridgeAddressProvider;
 import bisq.network.p2p.seed.SeedNodeRepository;
 
 import bisq.common.ClockWatcher;
