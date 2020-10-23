@@ -25,7 +25,6 @@ import bisq.network.p2p.network.SetupListener;
 import bisq.common.Timer;
 import bisq.common.UserThread;
 import bisq.common.proto.network.NetworkProtoResolver;
-import bisq.common.util.Utilities;
 
 import org.berndpruenster.netlayer.tor.HiddenServiceSocket;
 import org.berndpruenster.netlayer.tor.Tor;
@@ -77,6 +76,7 @@ public class TorNetworkNode extends NetworkNode {
     private MonadicBinding<Boolean> allShutDown;
     private Tor tor;
     private Socks5Proxy socksProxy;
+    private ListenableFuture<Void> torStartupFuture;
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -142,7 +142,6 @@ public class TorNetworkNode extends NetworkNode {
         // this one is committed as a thread to the executor
         BooleanProperty torNetworkNodeShutDown = torNetworkNodeShutDown();
         BooleanProperty shutDownTimerTriggered = shutDownTimerTriggered();
-
         // Need to store allShutDown to not get garbage collected
         allShutDown = EasyBind.combine(torNetworkNodeShutDown, networkNodeShutDown, shutDownTimerTriggered,
                 (a, b, c) -> (a && b) || c);
@@ -150,7 +149,6 @@ public class TorNetworkNode extends NetworkNode {
             if (newValue) {
                 shutDownTimeoutTimer.stop();
                 long ts = System.currentTimeMillis();
-                log.debug("Shutdown executorService");
                 try {
                     MoreExecutors.shutdownAndAwaitTermination(executorService, 500, TimeUnit.MILLISECONDS);
                     log.debug("Shutdown executorService done after {} ms.", System.currentTimeMillis() - ts);
@@ -171,7 +169,7 @@ public class TorNetworkNode extends NetworkNode {
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     private void createTorAndHiddenService(int localPort, int servicePort) {
-        ListenableFuture<Void> future = executorService.submit(() -> {
+        torStartupFuture = executorService.submit(() -> {
             try {
                 long ts = new Date().getTime();
                 Tor.setDefault(torMode.getTor());
@@ -224,7 +222,7 @@ public class TorNetworkNode extends NetworkNode {
 
             return null;
         });
-        Futures.addCallback(future, new FutureCallback<>() {
+        Futures.addCallback(torStartupFuture, new FutureCallback<Void>() {
             public void onSuccess(Void ignore) {
             }
 
