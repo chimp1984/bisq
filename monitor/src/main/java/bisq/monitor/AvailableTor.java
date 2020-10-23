@@ -17,7 +17,7 @@
 
 package bisq.monitor;
 
-import bisq.network.p2p.network.TorMode;
+import bisq.network.p2p.network.tor.TorMode;
 
 import org.berndpruenster.netlayer.tor.Tor;
 
