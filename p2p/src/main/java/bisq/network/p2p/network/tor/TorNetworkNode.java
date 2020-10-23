@@ -298,7 +298,17 @@ public class TorNetworkNode extends NetworkNode {
             } finally {
                 UserThread.execute(() -> done.set(true));
             }
+<<<<<<< HEAD
         });
+=======
+        } catch (Throwable e) {
+            log.error("Shutdown torNetworkNode failed with exception: {}", e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // We need to delay as otherwise our listener would not get called if shutdown completes in synchronous manner
+            UserThread.execute(() -> done.set(true));
+        }
+>>>>>>> Cleanup
         return done;
     }
 
@@ -316,5 +326,4 @@ public class TorNetworkNode extends NetworkNode {
         }, SHUT_DOWN_TIMEOUT);
         return done;
     }
-
 }
