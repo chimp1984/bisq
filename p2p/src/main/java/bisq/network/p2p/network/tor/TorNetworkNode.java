@@ -222,7 +222,7 @@ public class TorNetworkNode extends NetworkNode {
 
             return null;
         });
-        Futures.addCallback(torStartupFuture, new FutureCallback<Void>() {
+        Futures.addCallback(torStartupFuture, new FutureCallback<>() {
             public void onSuccess(Void ignore) {
             }
 
@@ -275,32 +275,17 @@ public class TorNetworkNode extends NetworkNode {
 
     private BooleanProperty torNetworkNodeShutDown() {
         BooleanProperty done = new SimpleBooleanProperty();
-        executorService.submit(() -> {
-            Utilities.setThreadName("torNetworkNodeShutDown");
-            long ts = System.currentTimeMillis();
-            log.debug("Shutdown torNetworkNode");
-            try {
-                /*
-                 * make sure we get tor.
-                 * - there have been situations where <code>tor</code> isn't set yet, which would leave tor running
-                 * - downside is that if tor is not already started, we start it here just to shut it down. However,
-                 *   that can only be the case if Bisq gets shutdown even before it reaches step 2/4 at startup.
-                 * The risk seems worth it compared to the risk of not shutting down tor.
-                 */
-                tor = Tor.getDefault();
-                if (tor != null) {
-                    tor.shutdown();
-                }
-                log.debug("Shutdown torNetworkNode done after " + (System.currentTimeMillis() - ts) + " ms.");
-            } catch (Throwable e) {
-                log.error("Shutdown torNetworkNode failed with exception: " + e.getMessage());
-                e.printStackTrace();
-            } finally {
-                UserThread.execute(() -> done.set(true));
+        try {
+            tor = Tor.getDefault();
+            if (tor != null) {
+                log.info("Tor has been created already so we can shut it down.");
+                tor.shutdown();
+                log.info("Tor shut down completed");
+            } else {
+                log.info("Tor has not been created yet. We cancel the torStartupFuture.");
+                torStartupFuture.cancel(true);
+                log.info("torStartupFuture cancelled");
             }
-<<<<<<< HEAD
-        });
-=======
         } catch (Throwable e) {
             log.error("Shutdown torNetworkNode failed with exception: {}", e.getMessage());
             e.printStackTrace();
@@ -308,13 +293,12 @@ public class TorNetworkNode extends NetworkNode {
             // We need to delay as otherwise our listener would not get called if shutdown completes in synchronous manner
             UserThread.execute(() -> done.set(true));
         }
->>>>>>> Cleanup
         return done;
     }
 
     private BooleanProperty networkNodeShutDown() {
         BooleanProperty done = new SimpleBooleanProperty();
-        super.shutDown(() -> done.set(true));
+        UserThread.execute(() -> super.shutDown(() -> done.set(true)));
         return done;
     }
 
