@@ -453,6 +453,10 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
         return peersNodeAddressOptional.isPresent();
     }
 
+    public String getAddressOrUid() {
+        return peersNodeAddressOptional.map(NodeAddress::getFullAddress).orElse(uid);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////////////////
     // ShutDown
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -482,6 +486,7 @@ public class Connection implements HasCapabilities, Runnable, MessageListener {
 
                         stopped = true;
 
+                        //todo add complete hander instead of sleep
                         //noinspection UnstableApiUsage
                         Uninterruptibles.sleepUninterruptibly(200, TimeUnit.MILLISECONDS);
                     } catch (Throwable t) {

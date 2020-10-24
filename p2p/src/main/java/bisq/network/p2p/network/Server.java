@@ -17,6 +17,8 @@
 
 package bisq.network.p2p.network;
 
+import bisq.common.Timer;
+import bisq.common.UserThread;
 import bisq.common.proto.network.NetworkProtoResolver;
 
 import java.net.ServerSocket;
@@ -25,20 +27,30 @@ import java.net.SocketException;
 
 import java.io.IOException;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+
+import org.jetbrains.annotations.Nullable;
 
 @Slf4j
 class Server implements Runnable {
+    private static final long SHUT_DOWN_TIMEOUT_SEC = 3;
+
     private final ServerSocket serverSocket;
     private final MessageListener messageListener;
     private final ConnectionListener connectionListener;
     private final NetworkProtoResolver networkProtoResolver;
     private final Set<Connection> connections = new CopyOnWriteArraySet<>();
     private final AtomicBoolean terminated = new AtomicBoolean();
+    @Nullable
+    private Timer timeoutTimer;
+    @Getter
+    private boolean shutDownCompleted;
 
     public Server(ServerSocket serverSocket,
                   MessageListener messageListener,
@@ -88,27 +100,66 @@ class Server implements Runnable {
         }
     }
 
-    public void shutDown() {
+    public void shutDown(@Nullable Runnable completeHandler) {
+        shutDownCompleted = false;
         if (terminated.get()) {
             log.warn("We got already terminated");
             return;
         }
-
         terminated.set(true);
 
-        connections.forEach(c -> c.shutDown(CloseConnectionReason.APP_SHUT_DOWN));
-        connections.clear();
+        timeoutTimer = UserThread.runAfter(() -> {
+            log.error("Server still not shut down after {} sec", SHUT_DOWN_TIMEOUT_SEC);
+            completeShutDown(completeHandler);
+        }, SHUT_DOWN_TIMEOUT_SEC);
 
-        try {
-            if (!serverSocket.isClosed()) {
+        if (!serverSocket.isClosed()) {
+            try {
                 serverSocket.close();
+            } catch (SocketException ignore) {
+                // SocketException at shutdown is expected
+            } catch (Throwable e) {
+                log.warn("Exception at shutdown. {}", e.getMessage());
+            } finally {
+                if (connections.isEmpty()) {
+                    completeShutDown(completeHandler);
+                    return;
+                }
             }
-        } catch (SocketException e) {
-            log.debug("SocketException at shutdown might be expected {}", e.getMessage());
-        } catch (IOException e) {
-            log.debug("Exception at shutdown. {}", e.getMessage());
-        } finally {
-            log.debug("Server shutdown complete");
+        } else if (connections.isEmpty()) {
+            completeShutDown(completeHandler);
+            return;
+        }
+
+        log.info("Shutdown {} connections", connections.size());
+        // We copy the connections to avoid ConcurrentModification exceptions
+        Set<Connection> allConnections = new HashSet<>(connections);
+        allConnections.forEach(c -> c.shutDown(CloseConnectionReason.APP_SHUT_DOWN,
+                () -> {
+                    log.info("Shutdown of connection {} completed", c.getAddressOrUid());
+                    if (connections.isEmpty()) {
+                        log.info("Shutdown completed with all connections closed");
+                        if (serverSocket.isClosed()) {
+                            completeShutDown(completeHandler);
+                        }
+                    }
+                }));
+        connections.clear();
+    }
+
+    private void completeShutDown(@Nullable Runnable completeHandler) {
+        if (shutDownCompleted) {
+            return;
+        }
+        shutDownCompleted = true;
+
+        log.info("Server shutdown complete");
+        if (timeoutTimer != null) {
+            timeoutTimer.stop();
+            timeoutTimer = null;
+        }
+        if (completeHandler != null) {
+            completeHandler.run();
         }
     }
 }

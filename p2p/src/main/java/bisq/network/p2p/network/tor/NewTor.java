@@ -48,7 +48,7 @@ import javax.annotation.Nullable;
  */
 @Slf4j
 public class NewTor extends TorMode {
-
+    @Nullable
     private final File torrcFile;
     private final String torrcOptions;
     private final Collection<String> bridgeEntries;
@@ -99,28 +99,29 @@ public class NewTor extends TorMode {
         }
 
         // assemble final torrc options
-        if (!torrcOptionsMap.isEmpty())
+        if (!torrcOptionsMap.isEmpty()) {
             // check for custom torrcFile
-            if (torrc != null)
+            if (torrc != null) {
                 // and merge the contents
                 torrc = new Torrc(torrc.getInputStream$tor_native(), torrcOptionsMap);
-            else
+            } else {
                 torrc = new Torrc(torrcOptionsMap);
-
+            }
+        }
         log.info("Starting tor");
-        NativeTor result = new NativeTor(torDir, bridgeEntries, torrc);
+        NativeTor tor = new NativeTor(torDir, bridgeEntries, torrc);
         log.info(
                 "\n################################################################\n" +
                         "Tor started after {} ms. Start publishing hidden service.\n" +
                         "################################################################",
-                (new Date().getTime() - ts)); // takes usually a few seconds
+                (new Date().getTime() - ts));
 
-        return result;
+        return tor;
     }
 
+    // TODO is that correct?
     @Override
     public String getHiddenServiceDirectory() {
         return "";
     }
-
 }

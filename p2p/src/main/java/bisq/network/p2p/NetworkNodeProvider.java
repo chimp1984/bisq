@@ -20,8 +20,7 @@ package bisq.network.p2p;
 import bisq.network.p2p.network.NetworkNode;
 import bisq.network.p2p.network.localhost.LocalhostNetworkNode;
 import bisq.network.p2p.network.tor.BridgeAddressProvider;
-import bisq.network.p2p.network.tor.NewTor;
-import bisq.network.p2p.network.tor.RunningTor;
+import bisq.network.p2p.network.tor.TorMode;
 import bisq.network.p2p.network.tor.TorNetworkNode;
 
 import bisq.common.config.Config;
@@ -55,9 +54,8 @@ public class NetworkNodeProvider implements Provider<NetworkNode> {
         networkNode = useLocalhostForP2P ?
                 new LocalhostNetworkNode(port, networkProtoResolver) :
                 new TorNetworkNode(port, networkProtoResolver, streamIsolation,
-                        controlPort != Config.UNSPECIFIED_PORT ?
-                                new RunningTor(torDir, controlPort, password, cookieFile, useSafeCookieAuthentication) :
-                                new NewTor(torDir, torrcFile, torrcOptions, bridgeAddressProvider.getBridgeAddresses()));
+                        TorMode.getTorMode(bridgeAddressProvider, torDir, torrcFile, torrcOptions,
+                                controlPort, password, cookieFile, useSafeCookieAuthentication));
     }
 
     @Override

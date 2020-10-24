@@ -27,27 +27,23 @@ import java.util.Date;
 
 import lombok.extern.slf4j.Slf4j;
 
+import javax.annotation.Nullable;
+
 /**
- * This class creates a brand new instance of the Tor onion router.
- *
- * When asked, the class checks for the authentication method selected and
- * connects to the given control port. Finally, a {@link Tor} instance is
- * returned for further use.
- *
- * @author Florian Reimair
- *
+ * Use existing tor process.
  */
 @Slf4j
 public class RunningTor extends TorMode {
     private final int controlPort;
     private final String password;
+    @Nullable
     private final File cookieFile;
     private final boolean useSafeCookieAuthentication;
 
     public RunningTor(File torDir,
                       int controlPort,
                       String password,
-                      File cookieFile,
+                      @Nullable File cookieFile,
                       boolean useSafeCookieAuthentication) {
         super(torDir);
 
@@ -64,22 +60,23 @@ public class RunningTor extends TorMode {
         log.info("Connecting to running tor");
 
         Tor tor;
-        if (!password.isEmpty())
+        if (!password.isEmpty()) {
             tor = new ExternalTor(controlPort, password);
-        else if (cookieFile != null && cookieFile.exists())
+        } else if (cookieFile != null && cookieFile.exists()) {
             tor = new ExternalTor(controlPort, cookieFile, useSafeCookieAuthentication);
-        else
+        } else {
             tor = new ExternalTor(controlPort);
+        }
 
-        log.info(
-                "\n################################################################\n" +
+        log.info("\n################################################################\n" +
                         "Connecting to Tor successful after {} ms. Start publishing hidden service.\n" +
                         "################################################################",
-                (new Date().getTime() - ts)); // takes usually a few seconds
+                new Date().getTime() - ts);
 
         return tor;
     }
 
+    // TODO is that correct?
     @Override
     public String getHiddenServiceDirectory() {
         return new File(torDir, HIDDEN_SERVICE_DIRECTORY).getAbsolutePath();

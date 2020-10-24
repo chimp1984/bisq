@@ -38,12 +38,6 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
 
-import org.fxmisc.easybind.EasyBind;
-import org.fxmisc.easybind.monadic.MonadicBinding;
-
-import javafx.beans.property.BooleanProperty;
-import javafx.beans.property.SimpleBooleanProperty;
-
 import java.security.SecureRandom;
 
 import java.net.Socket;
@@ -52,7 +46,6 @@ import java.io.IOException;
 
 import java.util.Base64;
 import java.util.Date;
-import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,20 +56,21 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 @Slf4j
 public class TorNetworkNode extends NetworkNode {
-    private static final int MAX_RESTART_ATTEMPTS = 5;
-    private static final long SHUT_DOWN_TIMEOUT = 5;
+    private static final long SHUT_DOWN_TIMEOUT_SEC = 3;
 
     private final boolean streamIsolation;
     private final TorMode torMode;
 
+    @Nullable
     private HiddenServiceSocket hiddenServiceSocket;
+    @Nullable
     private Timer shutDownTimeoutTimer;
-    private int restartCounter;
-    @SuppressWarnings("FieldCanBeLocal")
-    private MonadicBinding<Boolean> allShutDown;
+    @Nullable
     private Tor tor;
+    @Nullable
     private Socks5Proxy socksProxy;
-    private ListenableFuture<Void> torStartupFuture;
+    private boolean shutDownCompleted;
+
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Constructor
@@ -105,7 +99,46 @@ public class TorNetworkNode extends NetworkNode {
             addSetupListener(setupListener);
         }
 
-        createTorAndHiddenService(Utils.findFreeSystemPort(), servicePort);
+        createTorAndHiddenService();
+    }
+
+    public void shutDown(@Nullable Runnable completeHandler) {
+        shutDownCompleted = false;
+        shutDownTimeoutTimer = UserThread.runAfter(() -> {
+            log.error("Tor still not shut down after {} sec", SHUT_DOWN_TIMEOUT_SEC);
+            completeShutDown(completeHandler);
+        }, SHUT_DOWN_TIMEOUT_SEC);
+
+
+        // We only shut down tor if it is created from our application. If we used the systems tor we leave it running.
+        if (tor != null && torMode instanceof NewTor) {
+            try {
+                tor.shutdown();
+                Tor.setDefault(null);
+                log.info("Tor shut down completed");
+            } catch (Throwable e) {
+                log.error("Shutdown torNetworkNode failed with exception: {}", e.getMessage());
+                e.printStackTrace();
+            }
+        }
+
+        completeShutDown(completeHandler);
+    }
+
+    private void completeShutDown(Runnable completeHandler) {
+        if (shutDownCompleted) {
+            return;
+        }
+        shutDownCompleted = true;
+
+        if (shutDownTimeoutTimer != null) {
+            shutDownTimeoutTimer.stop();
+            shutDownTimeoutTimer = null;
+        }
+        log.info("TorNetworkNode shutdown complete");
+
+        // Once we are done we start shut down routine in base class
+        super.shutDown(completeHandler);
     }
 
     @Override
@@ -120,7 +153,6 @@ public class TorNetworkNode extends NetworkNode {
     public Socks5Proxy getSocksProxy() {
         try {
             if (socksProxy == null || streamIsolation) {
-                tor = Tor.getDefault();
                 socksProxy = tor != null ?
                         tor.getProxy(getStreamId()) :
                         null;
@@ -136,130 +168,69 @@ public class TorNetworkNode extends NetworkNode {
         }
     }
 
-    public void shutDown(@Nullable Runnable shutDownCompleteHandler) {
-        // this one is executed synchronously
-        BooleanProperty networkNodeShutDown = networkNodeShutDown();
-        // this one is committed as a thread to the executor
-        BooleanProperty torNetworkNodeShutDown = torNetworkNodeShutDown();
-        BooleanProperty shutDownTimerTriggered = shutDownTimerTriggered();
-        // Need to store allShutDown to not get garbage collected
-        allShutDown = EasyBind.combine(torNetworkNodeShutDown, networkNodeShutDown, shutDownTimerTriggered,
-                (a, b, c) -> (a && b) || c);
-        allShutDown.subscribe((observable, oldValue, newValue) -> {
-            if (newValue) {
-                shutDownTimeoutTimer.stop();
-                long ts = System.currentTimeMillis();
-                try {
-                    MoreExecutors.shutdownAndAwaitTermination(executorService, 500, TimeUnit.MILLISECONDS);
-                    log.debug("Shutdown executorService done after {} ms.", System.currentTimeMillis() - ts);
-                } catch (Throwable t) {
-                    log.error("Shutdown executorService failed with exception: {}", t.getMessage());
-                    t.printStackTrace();
-                } finally {
-                    if (shutDownCompleteHandler != null)
-                        shutDownCompleteHandler.run();
-                }
-            }
-        });
-    }
-
 
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Create tor and hidden service
     ///////////////////////////////////////////////////////////////////////////////////////////
 
-    private void createTorAndHiddenService(int localPort, int servicePort) {
-        torStartupFuture = executorService.submit(() -> {
+    private void createTorAndHiddenService() {
+        ListenableFuture<Void> future = getExecutorService().submit(() -> {
             try {
-                long ts = new Date().getTime();
-                Tor.setDefault(torMode.getTor());
+                tor = torMode.getTor();
+                Tor.setDefault(tor);
 
                 // Start hidden service
-                hiddenServiceSocket = new HiddenServiceSocket(localPort, torMode.getHiddenServiceDirectory(), servicePort);
+                long ts = new Date().getTime();
+                hiddenServiceSocket = new HiddenServiceSocket(Utils.findFreeSystemPort(), torMode.getHiddenServiceDirectory(), servicePort);
 
                 UserThread.execute(() -> {
-                    nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
+                    NodeAddress nodeAddress = new NodeAddress(hiddenServiceSocket.getServiceName() + ":" +
+                            hiddenServiceSocket.getHiddenServicePort());
+                    nodeAddressProperty.set(nodeAddress);
+
                     setupListeners.forEach(SetupListener::onTorNodeReady);
                 });
                 hiddenServiceSocket.addReadyListener(socket -> {
-                    try {
-                        log.info("\n################################################################\n" +
-                                        "Tor hidden service published after {} ms. Socket={}\n" +
-                                        "################################################################",
-                                new Date().getTime() - ts, socket);
+                    log.info("\n################################################################\n" +
+                                    "Tor hidden service published after {} ms. Socket={}\n" +
+                                    "################################################################",
+                            new Date().getTime() - ts, hiddenServiceSocket);
+                    UserThread.execute(() -> {
+                        NodeAddress nodeAddress = new NodeAddress(hiddenServiceSocket.getServiceName() + ":" +
+                                hiddenServiceSocket.getHiddenServicePort());
+                        nodeAddressProperty.set(nodeAddress);
+                        startServer(hiddenServiceSocket);
 
-                        UserThread.execute(() -> {
-                            nodeAddressProperty.set(new NodeAddress(hiddenServiceSocket.getServiceName() + ":" + hiddenServiceSocket.getHiddenServicePort()));
-                            startServer(socket);
-                            setupListeners.forEach(SetupListener::onHiddenServicePublished);
-                        });
-                    } catch (Throwable e) {
-                        log.error(e.toString());
-                        e.printStackTrace();
-                    }
+                        setupListeners.forEach(SetupListener::onHiddenServicePublished);
+                    });
                     return null;
                 });
-                log.info("It will take some time for the HS to be reachable (~40 seconds). You will be notified about this");
             } catch (TorCtlException e) {
-                String msg = e.getCause() != null ? e.getCause().toString() : e.toString();
-                log.error("Tor node creation failed: {}", msg);
                 if (e.getCause() instanceof IOException) {
-                    // Since we cannot connect to Tor, we cannot do anything.
-                    // Furthermore, we have no hidden services started yet, so there is no graceful
-                    // shutdown needed either
-                    UserThread.execute(() -> setupListeners.forEach(listener -> listener.onSetupFailed(new RuntimeException(msg))));
+                    setupFailed(e);
                 } else {
-                    UserThread.execute(() -> restartTor(e.getMessage()));
+                    requestCustomBridges(e);
                 }
-            } catch (IOException e) {
-                log.error("Could not connect to running Tor: {}", e.getMessage());
-                // Since we cannot connect to Tor, we cannot do anything.
-                // Furthermore, we have no hidden services started yet, so there is no graceful
-                // shutdown needed either
-                UserThread.execute(() -> setupListeners.forEach(listener -> listener.onSetupFailed(new RuntimeException(e.getMessage()))));
-            } catch (Throwable ignore) {
+            } catch (Throwable e) {
+                setupFailed(e);
             }
 
             return null;
         });
-        Futures.addCallback(torStartupFuture, new FutureCallback<>() {
+        Futures.addCallback(future, new FutureCallback<>() {
             public void onSuccess(Void ignore) {
             }
 
-            public void onFailure(@NotNull Throwable throwable) {
-                log.error("Hidden service creation failed: {}", throwable.toString());
-                UserThread.execute(() -> setupListeners.forEach(listener -> listener.onSetupFailed(new RuntimeException(throwable.toString()))));
+            public void onFailure(@NotNull Throwable e) {
+                setupFailed(e);
             }
         }, MoreExecutors.directExecutor());
     }
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
-    // Restart
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
-    private void restartTor(String errorMessage) {
-        log.info("Restart Tor");
-        restartCounter++;
-        if (restartCounter <= MAX_RESTART_ATTEMPTS) {
-            setupListeners.forEach(SetupListener::onRequestCustomBridges);
-            log.warn("We stop tor as starting tor with the default bridges failed. We request user to add custom bridges.");
-            shutDown(null);
-        } else {
-            String msg = "We tried to restart Tor " + restartCounter +
-                    " times, but it continued to fail with error message:\n" +
-                    errorMessage + "\n\n" +
-                    "Please check your internet connection and firewall and try to start again.";
-            log.error(msg);
-            throw new RuntimeException(msg);
-        }
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
     // Private
     ///////////////////////////////////////////////////////////////////////////////////////////
-
 
     @Nullable
     private String getStreamId() {
@@ -273,41 +244,20 @@ public class TorNetworkNode extends NetworkNode {
         return null;
     }
 
-    private BooleanProperty torNetworkNodeShutDown() {
-        BooleanProperty done = new SimpleBooleanProperty();
-        try {
-            tor = Tor.getDefault();
-            if (tor != null) {
-                log.info("Tor has been created already so we can shut it down.");
-                tor.shutdown();
-                log.info("Tor shut down completed");
-            } else {
-                log.info("Tor has not been created yet. We cancel the torStartupFuture.");
-                torStartupFuture.cancel(true);
-                log.info("torStartupFuture cancelled");
-            }
-        } catch (Throwable e) {
-            log.error("Shutdown torNetworkNode failed with exception: {}", e.getMessage());
-            e.printStackTrace();
-        } finally {
-            // We need to delay as otherwise our listener would not get called if shutdown completes in synchronous manner
-            UserThread.execute(() -> done.set(true));
-        }
-        return done;
+    private void requestCustomBridges(TorCtlException e) {
+        log.error("Exception at starting Tor: {}", e.toString());
+        UserThread.execute(() -> {
+            // We trigger a popup for telling the user to try with custom bridges and restart
+            setupListeners.forEach(SetupListener::onRequestCustomBridges);
+            shutDown(null);
+        });
     }
 
-    private BooleanProperty networkNodeShutDown() {
-        BooleanProperty done = new SimpleBooleanProperty();
-        UserThread.execute(() -> super.shutDown(() -> done.set(true)));
-        return done;
-    }
-
-    private BooleanProperty shutDownTimerTriggered() {
-        BooleanProperty done = new SimpleBooleanProperty();
-        shutDownTimeoutTimer = UserThread.runAfter(() -> {
-            log.error("A timeout occurred at shutDown");
-            done.set(true);
-        }, SHUT_DOWN_TIMEOUT);
-        return done;
+    private void setupFailed(@NotNull Throwable e) {
+        log.error("Exception at starting Tor: {}", e.toString());
+        UserThread.execute(() -> {
+            setupListeners.forEach(listener -> listener.onSetupFailed(e));
+            shutDown(null);
+        });
     }
 }

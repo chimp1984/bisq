@@ -17,6 +17,7 @@
 
 package bisq.network.p2p.network.tor;
 
+import bisq.common.config.Config;
 import bisq.common.file.FileUtil;
 
 import org.berndpruenster.netlayer.tor.Tor;
@@ -24,6 +25,8 @@ import org.berndpruenster.netlayer.tor.TorCtlException;
 
 import java.io.File;
 import java.io.IOException;
+
+import javax.annotation.Nullable;
 
 /**
  * Holds information on how tor should be created and delivers a respective
@@ -33,12 +36,24 @@ import java.io.IOException;
  *
  */
 public abstract class TorMode {
-
     /**
-     * The sub-directory where the <code>private_key</code> file sits in. Kept
-     * private, because it only concerns implementations of {@link TorMode}.
+     * The sub-directory where the <code>private_key</code> file sits in.
      */
     protected static final String HIDDEN_SERVICE_DIRECTORY = "hiddenservice";
+
+    public static TorMode getTorMode(BridgeAddressProvider bridgeAddressProvider,
+                                     File torDir,
+                                     @Nullable File torrcFile,
+                                     String torrcOptions,
+                                     int controlPort,
+                                     String password,
+                                     @Nullable File cookieFile,
+                                     boolean useSafeCookieAuthentication) {
+        return controlPort != Config.UNSPECIFIED_PORT ?
+                new RunningTor(torDir, controlPort, password, cookieFile, useSafeCookieAuthentication) :
+                new NewTor(torDir, torrcFile, torrcOptions, bridgeAddressProvider.getBridgeAddresses());
+    }
+
 
     protected final File torDir;
 
@@ -80,5 +95,4 @@ public abstract class TorMode {
     protected void doRollingBackup() {
         FileUtil.rollingBackup(new File(torDir, HIDDEN_SERVICE_DIRECTORY), "private_key", 20);
     }
-
 }
