@@ -144,7 +144,7 @@ public abstract class Metric extends Configurable implements Runnable {
         executor.shutdown();
 
         try {
-            if (!Metric.executor.awaitTermination(2, TimeUnit.MINUTES))
+            if (!Metric.executor.awaitTermination(2, TimeUnit.SECONDS))
                 Metric.executor.shutdownNow();
         } catch (InterruptedException e) {
             Metric.executor.shutdownNow();
