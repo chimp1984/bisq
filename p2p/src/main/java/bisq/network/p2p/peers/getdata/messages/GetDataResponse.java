@@ -28,7 +28,7 @@ import bisq.common.app.Version;
 import bisq.common.proto.network.NetworkEnvelope;
 import bisq.common.proto.network.NetworkProtoResolver;
 
-import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -115,15 +115,14 @@ public final class GetDataResponse extends NetworkEnvelope implements SupportedC
                                             NetworkProtoResolver resolver,
                                             int messageVersion) {
         log.info("Received a GetDataResponse with {} kB", proto.getSerializedSize() / 1000d);
-        Set<ProtectedStorageEntry> dataSet = new HashSet<>(
-                proto.getDataSetList().stream()
-                        .map(entry -> (ProtectedStorageEntry) resolver.fromProto(entry))
-                        .collect(Collectors.toSet()));
+        Set<ProtectedStorageEntry> dataSet = proto.getDataSetList().stream()
+                .map(entry -> (ProtectedStorageEntry) resolver.fromProto(entry))
+                .collect(Collectors.toSet());
 
-        Set<PersistableNetworkPayload> persistableNetworkPayloadSet = new HashSet<>(
-                proto.getPersistableNetworkPayloadItemsList().stream()
-                                .map(e -> (PersistableNetworkPayload) resolver.fromProto(e))
-                                .collect(Collectors.toSet()));
+        Set<PersistableNetworkPayload> persistableNetworkPayloadSet = proto.getPersistableNetworkPayloadItemsList().stream()
+                .map(e -> (PersistableNetworkPayload) resolver.fromProto(e))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
         return new GetDataResponse(dataSet,
                 persistableNetworkPayloadSet,
