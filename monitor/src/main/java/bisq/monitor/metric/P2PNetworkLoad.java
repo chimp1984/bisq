@@ -123,7 +123,7 @@ public class P2PNetworkLoad extends Metric implements MessageListener, SetupList
             // start the network node
             networkNode = new TorNetworkNode(Integer.parseInt(configuration.getProperty(TOR_PROXY_PORT, "9053")),
                     new CoreNetworkProtoResolver(Clock.systemDefaultZone()), false,
-                    new AvailableTor(Monitor.TOR_WORKING_DIR, torHiddenServiceDirAbs.getName()));
+                    new AvailableTor(Monitor.getTorDir(), torHiddenServiceDirAbs.getName()));
             networkNode.start(this);
 
             // wait for the HS to be published
