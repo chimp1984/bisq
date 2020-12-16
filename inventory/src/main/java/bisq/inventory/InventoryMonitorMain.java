@@ -47,7 +47,6 @@ import sun.misc.Signal;
 
 @Slf4j
 public class InventoryMonitorMain {
-
     private static InventoryMonitor inventoryMonitor;
     private static boolean stopped;
 
