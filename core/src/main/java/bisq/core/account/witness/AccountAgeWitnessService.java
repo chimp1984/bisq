@@ -74,7 +74,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -136,10 +135,11 @@ public class AccountAgeWitnessService {
     private final User user;
     private final SignedWitnessService signedWitnessService;
     private final ChargeBackRisk chargeBackRisk;
+    private final AccountAgeWitnessStorageService accountAgeWitnessStorageService;
     private final FilterManager filterManager;
     @Getter
     private final AccountAgeWitnessUtils accountAgeWitnessUtils;
-
+    @Getter
     private final Map<P2PDataStorage.ByteArray, AccountAgeWitness> accountAgeWitnessMap = new HashMap<>();
 
     // The accountAgeWitnessMap is very large (70k items) and access is a bit expensive. We usually only access less
@@ -167,6 +167,7 @@ public class AccountAgeWitnessService {
         this.user = user;
         this.signedWitnessService = signedWitnessService;
         this.chargeBackRisk = chargeBackRisk;
+        this.accountAgeWitnessStorageService = accountAgeWitnessStorageService;
         this.filterManager = filterManager;
 
         accountAgeWitnessUtils = new AccountAgeWitnessUtils(
@@ -190,10 +191,10 @@ public class AccountAgeWitnessService {
         });
 
         // At startup the P2PDataStorage initializes earlier, otherwise we get the listener called.
-        p2PService.getP2PDataStorage().getAppendOnlyDataStoreMap().values().forEach(e -> {
-            if (e instanceof AccountAgeWitness)
-                addToMap((AccountAgeWitness) e);
-        });
+        accountAgeWitnessStorageService.getMapOfAllData().values().stream()
+                .filter(e -> e instanceof AccountAgeWitness)
+                .map(e -> (AccountAgeWitness) e)
+                .forEach(this::addToMap);
 
         if (p2PService.isBootstrapped()) {
             onBootStrapped();
