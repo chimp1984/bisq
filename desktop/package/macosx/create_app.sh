@@ -45,33 +45,33 @@ zip -r -X -q "deploy/jar-lib-for-raspberry-pi-$version.zip" $JAR_LIB
 
 # Set BISQ_VM_PATH as environment var to the directory where your shared folders for virtual box are residing
 
-vmPath=$BISQ_VM_PATH
-linux64=$vmPath/vm_shared_ubuntu/desktop
-linux64Package=$linux64/package/linux
-win64=$vmPath/vm_shared_windows/desktop
-win64Package=$win64/package/windows
+# vmPath=$BISQ_VM_PATH
+# linux64=$vmPath/vm_shared_ubuntu/desktop
+# linux64Package=$linux64/package/linux
+# win64=$vmPath/vm_shared_windows/desktop
+# win64Package=$win64/package/windows
 
-rm -rf $linux64Package $win64Package
+# rm -rf $linux64Package $win64Package
 
-mkdir -p $linux64 $win64 $linux64Package $win64Package
+# mkdir -p $linux64 $win64 $linux64Package $win64Package
 
 cp $EXE_JAR "deploy/Bisq-$version.jar"
 
 # copy app jar to VM shared folders
-cp $EXE_JAR "$linux64Package/../desktop-$version-all.jar"
-cp $EXE_JAR "$win64Package/../desktop-$version-all.jar"
+# cp $EXE_JAR "$linux64Package/../desktop-$version-all.jar"
+# cp $EXE_JAR "$win64Package/../desktop-$version-all.jar"
 
 # Copy packager scripts to VM. No need to checkout the source as we only are interested in the build scripts.
 
-cp -r package/linux/. $linux64Package
-cp -r package/windows/. $win64Package
+# cp -r package/linux/. $linux64Package
+# cp -r package/windows/. $win64Package
 
 if [ -z "$JAVA_HOME" ]; then
     JAVA_HOME=$(/usr/libexec/java_home)
 fi
 
 # Open jdk does not has the java packager.
-# JAVA_HOME=/Library/Java/JavaVirtualMachines/oracle_jdk-10.0.2.jdk/Contents/Home
+JAVA_HOME=/Library/Java/JavaVirtualMachines/oracle_jdk-10.0.2.jdk/Contents/Home
 
 echo "Using JAVA_HOME: $JAVA_HOME"
 
