@@ -140,7 +140,7 @@ public class AccountAgeWitnessService {
     private final FilterManager filterManager;
     @Getter
     private final AccountAgeWitnessUtils accountAgeWitnessUtils;
-    @Getter
+
     private final Map<P2PDataStorage.ByteArray, AccountAgeWitness> accountAgeWitnessMap = new HashMap<>();
 
     // The accountAgeWitnessMap is very large (70k items) and access is a bit expensive. We usually only access less
