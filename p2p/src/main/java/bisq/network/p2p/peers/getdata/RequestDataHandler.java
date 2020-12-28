@@ -136,7 +136,7 @@ class RequestDataHandler implements MessageListener {
                                 handleFault(errorMessage, nodeAddress, CloseConnectionReason.SEND_MSG_TIMEOUT);
                             } else {
                                 log.trace("We have stopped already. We ignore that timeoutTimer.run call. " +
-                                        "Might be caused by an previous networkNode.sendMessage.onFailure.");
+                                        "Might be caused by a previous networkNode.sendMessage.onFailure.");
                             }
                         },
                         TIMEOUT);
@@ -154,7 +154,7 @@ class RequestDataHandler implements MessageListener {
                         log.trace("Send {} to {} succeeded.", getDataRequest, nodeAddress);
                     } else {
                         log.trace("We have stopped already. We ignore that networkNode.sendMessage.onSuccess call." +
-                                "Might be caused by an previous timeout.");
+                                "Might be caused by a previous timeout.");
                     }
                 }
 
@@ -168,7 +168,7 @@ class RequestDataHandler implements MessageListener {
                         handleFault(errorMessage, nodeAddress, CloseConnectionReason.SEND_MSG_FAILURE);
                     } else {
                         log.trace("We have stopped already. We ignore that networkNode.sendMessage.onFailure call. " +
-                                "Might be caused by an previous timeout.");
+                                "Might be caused by a previous timeout.");
                     }
                 }
             }, MoreExecutors.directExecutor());
