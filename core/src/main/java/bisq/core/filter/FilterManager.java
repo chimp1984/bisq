@@ -407,12 +407,6 @@ public class FilterManager {
                         .anyMatch(e -> e.equals(nodeAddress.getFullAddress()));
     }
 
-    public boolean isNodeAddressBannedFromNetwork(NodeAddress nodeAddress) {
-        return getFilter() != null &&
-                getFilter().getNodeAddressesBannedFromNetwork().stream()
-                        .anyMatch(e -> e.equals(nodeAddress.getFullAddress()));
-    }
-
     public boolean isAutoConfExplorerBanned(String address) {
         return getFilter() != null &&
                 getFilter().getBannedAutoConfExplorers().stream()
