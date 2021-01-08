@@ -94,5 +94,5 @@ $JAVA_HOME/bin/javapackager \
     -v
 
 open deploy
-
+eacho deploy
 cd package/macosx
