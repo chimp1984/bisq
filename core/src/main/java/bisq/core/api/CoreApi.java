@@ -108,17 +108,16 @@ public class CoreApi {
         return coreOffersService.getOffer(id);
     }
 
+    public Offer getMyOffer(String id) {
+        return coreOffersService.getMyOffer(id);
+    }
+
     public List<Offer> getOffers(String direction, String currencyCode) {
         return coreOffersService.getOffers(direction, currencyCode);
     }
 
-    /**
-     * @param direction     The offer direction
-     * @param currencyCode  The offer currency
-     * @return Returns the offers which can be taken
-     */
-    List<Offer> getOffersAvailableForTaker(String direction, String currencyCode) {
-        return coreOffersService.getOffersAvailableForTaker(direction, currencyCode, true);
+    public List<Offer> getMyOffers(String direction, String currencyCode) {
+        return coreOffersService.getMyOffers(direction, currencyCode);
     }
 
     public void createAnPlaceOffer(String currencyCode,
@@ -211,7 +210,6 @@ public class CoreApi {
         coreTradesService.takeOffer(offer,
                 paymentAccountId,
                 takerFeeCurrencyCode,
-                true,
                 resultHandler);
     }
 
