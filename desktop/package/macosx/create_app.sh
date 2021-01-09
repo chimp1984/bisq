@@ -94,5 +94,6 @@ $JAVA_HOME/bin/javapackager \
     -v
 
 open deploy
-eacho deploy
+echo deploy
+open "deploy/Bisq-$version.dmg"
 cd package/macosx
