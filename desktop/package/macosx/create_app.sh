@@ -6,7 +6,7 @@ mkdir -p deploy
 
 set -e
 
-version="1.5.4-SNAPSHOT"
+version="1.5.4"
 
 cd ..
 ./gradlew :desktop:build -x test shadowJar
@@ -94,5 +94,5 @@ $JAVA_HOME/bin/javapackager \
     -v
 
 open deploy
-
+eacho deploy
 cd package/macosx
