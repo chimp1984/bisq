@@ -571,9 +571,9 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
     private void maybeRepublishMailBoxMessages() {
         // We only do the republishing at seed nodes to avoid that the network gets too much traffic
         // 1000 mailbox messages are about 3 MB, so that would cause quite some load if all nodes would do that.
-        if (!peerManager.isSeedNode(networkNode.getNodeAddress())) {
+        /*if (!peerManager.isSeedNode(networkNode.getNodeAddress())) {
             return;
-        }
+        }*/
 
         log.trace("## republishMailBoxMessages mailboxItemsByUid={}", mailboxItemsByUid);
 
