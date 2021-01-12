@@ -15,9 +15,23 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p;
+package bisq.network.utils;
 
+import java.net.ServerSocket;
 
-public interface MailboxMessage extends DirectMessage, UidMessage {
-    NodeAddress getSenderNodeAddress();
+import java.io.IOException;
+
+import java.util.Random;
+
+public class Utils {
+    public static int findFreeSystemPort() {
+        try {
+            ServerSocket server = new ServerSocket(0);
+            int port = server.getLocalPort();
+            server.close();
+            return port;
+        } catch (IOException ignored) {
+            return new Random().nextInt(10000) + 50000;
+        }
+    }
 }

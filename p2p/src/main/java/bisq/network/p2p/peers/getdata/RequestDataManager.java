@@ -39,9 +39,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -72,9 +74,11 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
 
         void onDataReceived();
 
-        void onNoPeersAvailable();
+        default void onNoPeersAvailable() {
+        }
 
-        void onNoSeedNodeAvailable();
+        default void onNoSeedNodeAvailable() {
+        }
     }
 
 
@@ -86,7 +90,7 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
     private final P2PDataStorage dataStorage;
     private final PeerManager peerManager;
     private final List<NodeAddress> seedNodeAddresses;
-    private Listener listener;
+    private final Set<Listener> listeners = new HashSet<>();
 
     private final Map<NodeAddress, RequestDataHandler> handlerMap = new HashMap<>();
     private final Map<String, GetDataRequestHandler> getDataRequestHandlers = new HashMap<>();
@@ -143,7 +147,7 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
     ///////////////////////////////////////////////////////////////////////////////////////////
 
     public void addListener(Listener listener) {
-        this.listener = listener;
+        listeners.add(listener);
     }
 
     public boolean requestPreliminaryData() {
@@ -329,16 +333,16 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
                                     // We delay because it can be that we get the HS published before we receive the
                                     // preliminary data and the onPreliminaryDataReceived call triggers the
                                     // dataUpdateRequested set to true, so we would also call the onUpdatedDataReceived.
-                                    UserThread.runAfter(listener::onPreliminaryDataReceived, 100, TimeUnit.MILLISECONDS);
+                                    UserThread.runAfter(() -> listeners.forEach(Listener::onPreliminaryDataReceived), 100, TimeUnit.MILLISECONDS);
                                 }
 
                                 // 2. Later we get a response from requestUpdatesData
                                 if (dataUpdateRequested) {
                                     dataUpdateRequested = false;
-                                    listener.onUpdatedDataReceived();
+                                    listeners.forEach(Listener::onUpdatedDataReceived);
                                 }
 
-                                listener.onDataReceived();
+                                listeners.forEach(Listener::onDataReceived);
                             }
 
                             @Override
@@ -365,10 +369,11 @@ public class RequestDataManager implements MessageListener, ConnectionListener, 
 
                                     // Notify listeners
                                     if (!nodeAddressOfPreliminaryDataRequest.isPresent()) {
-                                        if (peerManager.isSeedNode(nodeAddress))
-                                            listener.onNoSeedNodeAvailable();
-                                        else
-                                            listener.onNoPeersAvailable();
+                                        if (peerManager.isSeedNode(nodeAddress)) {
+                                            listeners.forEach(Listener::onNoSeedNodeAvailable);
+                                        } else {
+                                            listeners.forEach(Listener::onNoPeersAvailable);
+                                        }
                                     }
 
                                     requestFromNonSeedNodePeers();

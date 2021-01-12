@@ -28,9 +28,10 @@ import bisq.network.p2p.AckMessage;
 import bisq.network.p2p.AckMessageSourceType;
 import bisq.network.p2p.DecryptedDirectMessageListener;
 import bisq.network.p2p.DecryptedMessageWithPubKey;
-import bisq.network.p2p.MailboxMessage;
 import bisq.network.p2p.NodeAddress;
 import bisq.network.p2p.SendMailboxMessageListener;
+import bisq.network.p2p.mailbox.MailboxMessage;
+import bisq.network.p2p.mailbox.MailboxMessageService;
 import bisq.network.p2p.messaging.DecryptedMailboxListener;
 
 import bisq.common.Timer;
@@ -79,14 +80,15 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             processModel.getP2PService().addDecryptedDirectMessageListener(this);
         }
 
+        MailboxMessageService mailboxMessageService = processModel.getP2PService().getMailboxMessageService();
         // We delay a bit here as the trade gets updated from the wallet to update the trade
         // state (deposit confirmed) and that happens after our method is called.
         // TODO To fix that in a better way we would need to change the order of some routines
         // from the TradeManager, but as we are close to a release I dont want to risk a bigger
         // change and leave that for a later PR
         UserThread.runAfter(() -> {
-            processModel.getP2PService().addDecryptedMailboxListener(this);
-            processModel.getP2PService().getMailBoxMessages()
+            mailboxMessageService.addDecryptedMailboxListener(this);
+            mailboxMessageService.getMyDecryptedMessages()
                     .forEach(this::handleDecryptedMessageWithPubKey);
         }, 100, TimeUnit.MILLISECONDS);
     }
@@ -146,7 +148,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             // We only remove here if we have already completed the trade.
             // Otherwise removal is done after successfully applied the task runner.
             if (trade.isWithdrawn()) {
-                processModel.getP2PService().removeMailboxMsg(decryptedMessageWithPubKey);
+                processModel.getP2PService().getMailboxMessageService().removeMailboxMsg(decryptedMessageWithPubKey);
                 log.info("Remove {} from the P2P network.", tradeMessage.getClass().getSimpleName());
                 return;
             }
@@ -160,7 +162,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                 onAckMessage((AckMessage) networkEnvelope, peer);
             }
             // In any case we remove the msg
-            processModel.getP2PService().removeMailboxMsg(decryptedMessageWithPubKey);
+            processModel.getP2PService().getMailboxMessageService().removeMailboxMsg(decryptedMessageWithPubKey);
             log.info("Remove {} from the P2P network.", networkEnvelope.getClass().getSimpleName());
         }
     }
@@ -173,7 +175,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
             PublicKey sigPubKey = processModel.getTradingPeer().getPubKeyRing().getSignaturePubKey();
             // We reconstruct the DecryptedMessageWithPubKey from the message and the peers signature pubKey
             DecryptedMessageWithPubKey decryptedMessageWithPubKey = new DecryptedMessageWithPubKey(tradeMessage, sigPubKey);
-            processModel.getP2PService().removeMailboxMsg(decryptedMessageWithPubKey);
+            processModel.getP2PService().getMailboxMessageService().removeMailboxMsg(decryptedMessageWithPubKey);
             log.info("Remove {} from the P2P network.", tradeMessage.getClass().getSimpleName());
         }
     }
@@ -269,7 +271,7 @@ public abstract class TradeProtocol implements DecryptedDirectMessageListener, D
                 processModel.getTempTradingPeerNodeAddress();
         log.info("Send AckMessage for {} to peer {}. tradeId={}, sourceUid={}",
                 ackMessage.getSourceMsgClassName(), peer, tradeId, sourceUid);
-        processModel.getP2PService().sendEncryptedMailboxMessage(
+        processModel.getP2PService().getMailboxMessageService().sendEncryptedMailboxMessage(
                 peer,
                 peersPubKeyRing,
                 ackMessage,
