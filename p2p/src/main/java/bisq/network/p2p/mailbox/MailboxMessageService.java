@@ -173,6 +173,7 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
                                 //todo check if listeners are called too early
                                 p2PDataStorage.addProtectedMailboxStorageEntryToMap(mailboxItem.getProtectedMailboxStorageEntry());
                             });
+                    log.info("We have loaded {} persisted mailboxMessage items", mailboxMessageList.size());
                     requestPersistence();
                     completeHandler.run();
                 },
@@ -189,7 +190,7 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
                                             NetworkEnvelope message,
                                             SendMailboxMessageListener sendMailboxMessageListener) {
         if (peersPubKeyRing == null) {
-            log.trace("## sendEncryptedMailboxMessage: peersPubKeyRing is null. We ignore the call.");
+            log.debug("sendEncryptedMailboxMessage: peersPubKeyRing is null. We ignore the call.");
             return;
         }
 
@@ -285,7 +286,6 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
     }
 
     public Set<DecryptedMessageWithPubKey> getMyDecryptedMessages() {
-        log.trace("## getMyMailBoxMessages mailboxItemsByUid={}", mailboxItemsByUid);
         return mailboxItemsByUid.values().stream()
                 .filter(MailboxItem::isMine)
                 .map(MailboxItem::getDecryptedMessageWithPubKey)
@@ -383,9 +383,9 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
 
     private void processSingleMailboxEntry(Collection<ProtectedMailboxStorageEntry> protectedMailboxStorageEntries) {
         checkArgument(protectedMailboxStorageEntries.size() == 1);
-        var decryptedEntries = new ArrayList<>(getDecryptedEntries(protectedMailboxStorageEntries));
-        if (decryptedEntries.size() == 1) {
-            handleMailboxItem(decryptedEntries.get(0));
+        var mailboxItems = new ArrayList<>(getMailboxItems(protectedMailboxStorageEntries));
+        if (mailboxItems.size() == 1) {
+            handleMailboxItem(mailboxItems.get(0));
         }
     }
 
@@ -395,11 +395,11 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
         ListeningExecutorService executor = Utilities.getSingleThreadListeningExecutor("processMailboxEntry-" + new Random().nextInt(1000));
         long ts = System.currentTimeMillis();
         ListenableFuture<Set<MailboxItem>> future = executor.submit(() -> {
-            var decryptedEntries = getDecryptedEntries(protectedMailboxStorageEntries);
+            var mailboxItems = getMailboxItems(protectedMailboxStorageEntries);
             log.info("Batch processing of {} mailbox entries took {} ms",
                     protectedMailboxStorageEntries.size(),
                     System.currentTimeMillis() - ts);
-            return decryptedEntries;
+            return mailboxItems;
         });
 
         Futures.addCallback(future, new FutureCallback<>() {
@@ -413,15 +413,15 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
         }, MoreExecutors.directExecutor());
     }
 
-    private Set<MailboxItem> getDecryptedEntries(Collection<ProtectedMailboxStorageEntry> protectedMailboxStorageEntries) {
-        Set<MailboxItem> decryptedMailboxMessageWithEntries = new HashSet<>();
+    private Set<MailboxItem> getMailboxItems(Collection<ProtectedMailboxStorageEntry> protectedMailboxStorageEntries) {
+        Set<MailboxItem> mailboxItems = new HashSet<>();
         protectedMailboxStorageEntries.stream()
-                .map(this::decryptProtectedMailboxStorageEntry)
-                .forEach(decryptedMailboxMessageWithEntries::add);
-        return decryptedMailboxMessageWithEntries;
+                .map(this::tryDecryptProtectedMailboxStorageEntry)
+                .forEach(mailboxItems::add);
+        return mailboxItems;
     }
 
-    private MailboxItem decryptProtectedMailboxStorageEntry(ProtectedMailboxStorageEntry protectedMailboxStorageEntry) {
+    private MailboxItem tryDecryptProtectedMailboxStorageEntry(ProtectedMailboxStorageEntry protectedMailboxStorageEntry) {
         PrefixedSealedAndSignedMessage prefixedSealedAndSignedMessage = protectedMailboxStorageEntry
                 .getMailboxStoragePayload()
                 .getPrefixedSealedAndSignedMessage();
@@ -493,51 +493,52 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
     private void addMailboxData(MailboxStoragePayload expirableMailboxStoragePayload,
                                 PublicKey receiversPublicKey,
                                 SendMailboxMessageListener sendMailboxMessageListener) {
-        if (isBootstrapped) {
-            if (!networkNode.getAllConnections().isEmpty()) {
-                try {
-                    ProtectedMailboxStorageEntry protectedMailboxStorageEntry = p2PDataStorage.getMailboxDataWithSignedSeqNr(
-                            expirableMailboxStoragePayload,
-                            keyRing.getSignatureKeyPair(),
-                            receiversPublicKey);
-
-                    BroadcastHandler.Listener listener = new BroadcastHandler.Listener() {
-                        @Override
-                        public void onSufficientlyBroadcast(List<Broadcaster.BroadcastRequest> broadcastRequests) {
-                            broadcastRequests.stream()
-                                    .filter(broadcastRequest -> broadcastRequest.getMessage() instanceof AddDataMessage)
-                                    .filter(broadcastRequest -> {
-                                        AddDataMessage addDataMessage = (AddDataMessage) broadcastRequest.getMessage();
-                                        return addDataMessage.getProtectedStorageEntry().equals(protectedMailboxStorageEntry);
-                                    })
-                                    .forEach(e -> sendMailboxMessageListener.onStoredInMailbox());
-                        }
-
-                        @Override
-                        public void onNotSufficientlyBroadcast(int numOfCompletedBroadcasts, int numOfFailedBroadcast) {
-                            sendMailboxMessageListener.onFault("Message was not sufficiently broadcast.\n" +
-                                    "numOfCompletedBroadcasts: " + numOfCompletedBroadcasts + ".\n" +
-                                    "numOfFailedBroadcast=" + numOfFailedBroadcast);
-                        }
-                    };
-                    boolean result = p2PDataStorage.addProtectedStorageEntry(protectedMailboxStorageEntry, networkNode.getNodeAddress(), listener);
-                    if (!result) {
-                        sendMailboxMessageListener.onFault("Data already exists in our local database");
-
-                        // This should only fail if there are concurrent calls to addProtectedStorageEntry with the
-                        // same ProtectedMailboxStorageEntry. This is an unexpected use case so if it happens we
-                        // want to see it, but it is not worth throwing an exception.
-                        log.error("Unexpected state: adding mailbox message that already exists.");
-                    }
-                } catch (CryptoException e) {
-                    log.error("Signing at getMailboxDataWithSignedSeqNr failed.");
-                }
-            } else {
-                sendMailboxMessageListener.onFault("There are no P2P network nodes connected. " +
-                        "Please check your internet connection.");
-            }
-        } else {
+        if (!isBootstrapped) {
             throw new NetworkNotReadyException();
+        }
+
+        if (networkNode.getAllConnections().isEmpty()) {
+            sendMailboxMessageListener.onFault("There are no P2P network nodes connected. " +
+                    "Please check your internet connection.");
+            return;
+        }
+
+        try {
+            ProtectedMailboxStorageEntry protectedMailboxStorageEntry = p2PDataStorage.getMailboxDataWithSignedSeqNr(
+                    expirableMailboxStoragePayload,
+                    keyRing.getSignatureKeyPair(),
+                    receiversPublicKey);
+
+            BroadcastHandler.Listener listener = new BroadcastHandler.Listener() {
+                @Override
+                public void onSufficientlyBroadcast(List<Broadcaster.BroadcastRequest> broadcastRequests) {
+                    broadcastRequests.stream()
+                            .filter(broadcastRequest -> broadcastRequest.getMessage() instanceof AddDataMessage)
+                            .filter(broadcastRequest -> {
+                                AddDataMessage addDataMessage = (AddDataMessage) broadcastRequest.getMessage();
+                                return addDataMessage.getProtectedStorageEntry().equals(protectedMailboxStorageEntry);
+                            })
+                            .forEach(e -> sendMailboxMessageListener.onStoredInMailbox());
+                }
+
+                @Override
+                public void onNotSufficientlyBroadcast(int numOfCompletedBroadcasts, int numOfFailedBroadcast) {
+                    sendMailboxMessageListener.onFault("Message was not sufficiently broadcast.\n" +
+                            "numOfCompletedBroadcasts: " + numOfCompletedBroadcasts + ".\n" +
+                            "numOfFailedBroadcast=" + numOfFailedBroadcast);
+                }
+            };
+            boolean result = p2PDataStorage.addProtectedStorageEntry(protectedMailboxStorageEntry, networkNode.getNodeAddress(), listener);
+            if (!result) {
+                sendMailboxMessageListener.onFault("Data already exists in our local database");
+
+                // This should only fail if there are concurrent calls to addProtectedStorageEntry with the
+                // same ProtectedMailboxStorageEntry. This is an unexpected use case so if it happens we
+                // want to see it, but it is not worth throwing an exception.
+                log.error("Unexpected state: adding mailbox message that already exists.");
+            }
+        } catch (CryptoException e) {
+            log.error("Signing at getMailboxDataWithSignedSeqNr failed.");
         }
     }
 
@@ -588,7 +589,7 @@ public class MailboxMessageService implements SetupListener, RequestDataManager.
     // additional resilience and as a backup in case all seed nodes would fail to prevent that mailbox messages would
     // get lost. A long delay for republishing is preferred over too much network load.
     private void republishInChunks(Queue<ProtectedMailboxStorageEntry> queue) {
-        log.trace("## republishInChunks queue={}", queue.size());
+        log.info("republishInChunks queue size: {}", queue.size());
         int i = 0;
         while (!queue.isEmpty() && i < 50) {
             ProtectedMailboxStorageEntry protectedMailboxStorageEntry = queue.poll();
