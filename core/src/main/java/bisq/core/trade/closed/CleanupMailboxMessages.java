@@ -25,6 +25,7 @@ import bisq.network.p2p.AckMessageSourceType;
 import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.DecryptedMessageWithPubKey;
 import bisq.network.p2p.P2PService;
+import bisq.network.p2p.mailbox.MailboxMessageService;
 
 import bisq.common.crypto.PubKeyRing;
 import bisq.common.proto.network.NetworkEnvelope;
@@ -50,10 +51,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class CleanupMailboxMessages {
     private final P2PService p2PService;
+    private final MailboxMessageService mailboxMessageService;
 
     @Inject
-    public CleanupMailboxMessages(P2PService p2PService) {
+    public CleanupMailboxMessages(P2PService p2PService, MailboxMessageService mailboxMessageService) {
         this.p2PService = p2PService;
+        this.mailboxMessageService = mailboxMessageService;
     }
 
     public void handleTrades(List<Trade> trades) {
@@ -76,7 +79,7 @@ public class CleanupMailboxMessages {
     }
 
     private void cleanupMailboxMessages(List<Trade> trades) {
-        p2PService.getMailBoxMessages()
+        mailboxMessageService.getMyDecryptedMessages()
                 .forEach(message -> handleDecryptedMessageWithPubKey(message, trades));
     }
 
@@ -102,7 +105,7 @@ public class CleanupMailboxMessages {
     private void removeEntryFromMailbox(DecryptedMessageWithPubKey decryptedMessageWithPubKey, Trade trade) {
         log.info("We found a pending mailbox message ({}) for trade {}. As the trade is closed we remove the mailbox message.",
                 decryptedMessageWithPubKey.getNetworkEnvelope().getClass().getSimpleName(), trade.getId());
-        p2PService.removeMailboxMsg(decryptedMessageWithPubKey);
+        mailboxMessageService.removeMailboxMsg(decryptedMessageWithPubKey);
     }
 
     private boolean isMyMessage(TradeMessage message, Trade trade) {

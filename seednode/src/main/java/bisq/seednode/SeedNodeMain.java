@@ -188,8 +188,6 @@ public class SeedNodeMain extends ExecutableForAppWithP2p {
 
         checkConnectionLossTime = UserThread.runPeriodically(() -> {
             if (injector.getInstance(PeerManager.class).getNumAllConnectionsLostEvents() > 1) {
-                // Removing cache files help in case the node got flagged from Tor's dos protection
-
                 // We set a flag to clear tor cache files at re-start. We cannot clear it now as Tor is used and
                 // that can cause problems.
                 injector.getInstance(User.class).getCookie().putAsBoolean(CookieKey.CLEAN_TOR_DIR_AT_RESTART, true);

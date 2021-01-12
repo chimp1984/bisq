@@ -15,23 +15,14 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p;
+package bisq.network.p2p.network;
 
-import java.net.ServerSocket;
+import bisq.network.p2p.NodeAddress;
 
-import java.io.IOException;
+import java.util.function.Function;
 
-import java.util.Random;
+public interface NetworkFilter {
+    boolean isPeerBanned(NodeAddress nodeAddress);
 
-public class Utils {
-    public static int findFreeSystemPort() {
-        try {
-            ServerSocket server = new ServerSocket(0);
-            int port = server.getLocalPort();
-            server.close();
-            return port;
-        } catch (IOException ignored) {
-            return new Random().nextInt(10000) + 50000;
-        }
-    }
+    void setBannedNodeFunction(Function<NodeAddress, Boolean> isNodeAddressBanned);
 }
