@@ -40,7 +40,7 @@ import javax.annotation.Nullable;
 @Slf4j
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class PayoutTxPublishedMessage extends TradeMessage implements MailboxMessage {
+public final class PayoutTxPublishedMessage extends TradeMailboxMessage {
     private final byte[] payoutTx;
     private final NodeAddress senderNodeAddress;
 

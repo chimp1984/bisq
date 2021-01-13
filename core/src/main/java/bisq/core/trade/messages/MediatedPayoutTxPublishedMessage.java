@@ -31,7 +31,7 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class MediatedPayoutTxPublishedMessage extends TradeMessage implements MailboxMessage {
+public final class MediatedPayoutTxPublishedMessage extends TradeMailboxMessage {
     private final byte[] payoutTx;
     private final NodeAddress senderNodeAddress;
 

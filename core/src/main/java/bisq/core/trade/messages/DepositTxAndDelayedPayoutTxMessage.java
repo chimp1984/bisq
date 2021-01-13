@@ -32,7 +32,7 @@ import lombok.Value;
 // in case of network issues and as the message does not trigger further protocol execution.
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class DepositTxAndDelayedPayoutTxMessage extends TradeMessage implements MailboxMessage {
+public final class DepositTxAndDelayedPayoutTxMessage extends TradeMailboxMessage {
     private final NodeAddress senderNodeAddress;
     private final byte[] depositTx;
     private final byte[] delayedPayoutTx;
@@ -78,7 +78,8 @@ public final class DepositTxAndDelayedPayoutTxMessage extends TradeMessage imple
                 .build();
     }
 
-    public static DepositTxAndDelayedPayoutTxMessage fromProto(protobuf.DepositTxAndDelayedPayoutTxMessage proto, int messageVersion) {
+    public static DepositTxAndDelayedPayoutTxMessage fromProto(protobuf.DepositTxAndDelayedPayoutTxMessage proto,
+                                                               int messageVersion) {
         return new DepositTxAndDelayedPayoutTxMessage(messageVersion,
                 proto.getUid(),
                 proto.getTradeId(),

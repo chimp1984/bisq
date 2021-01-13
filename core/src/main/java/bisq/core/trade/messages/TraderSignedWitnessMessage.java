@@ -34,7 +34,7 @@ import lombok.Value;
 @SuppressWarnings("ALL")
 @EqualsAndHashCode(callSuper = true)
 @Value
-public class TraderSignedWitnessMessage extends TradeMessage implements MailboxMessage {
+public class TraderSignedWitnessMessage extends TradeMailboxMessage {
     private final NodeAddress senderNodeAddress;
     private final SignedWitness signedWitness;
 

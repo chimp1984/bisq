@@ -15,14 +15,27 @@
  * along with Bisq. If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bisq.network.p2p.mailbox;
+package bisq.core.trade.messages;
 
+import bisq.network.p2p.mailbox.MailboxMessage;
 
-import bisq.network.p2p.DirectMessage;
-import bisq.network.p2p.NodeAddress;
-import bisq.network.p2p.UidMessage;
-import bisq.network.p2p.storage.payload.ExpirablePayload;
+import java.util.concurrent.TimeUnit;
 
-public interface MailboxMessage extends DirectMessage, UidMessage, ExpirablePayload {
-    NodeAddress getSenderNodeAddress();
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
+@EqualsAndHashCode(callSuper = true)
+@ToString
+public abstract class TradeMailboxMessage extends TradeMessage implements MailboxMessage {
+    public static final long TTL = TimeUnit.DAYS.toMillis(15);
+
+    protected TradeMailboxMessage(int messageVersion, String tradeId, String uid) {
+        super(messageVersion, tradeId, uid);
+    }
+
+    @Override
+    public long getTTL() {
+        return TTL;
+    }
+
 }

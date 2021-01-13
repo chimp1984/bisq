@@ -27,7 +27,7 @@ import lombok.Value;
 
 @EqualsAndHashCode(callSuper = true)
 @Value
-public final class PeerPublishedDelayedPayoutTxMessage extends TradeMessage implements MailboxMessage {
+public final class PeerPublishedDelayedPayoutTxMessage extends TradeMailboxMessage {
     private final NodeAddress senderNodeAddress;
 
     public PeerPublishedDelayedPayoutTxMessage(String uid,

@@ -50,6 +50,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import static org.bitcoinj.core.Utils.HEX;
 
 public class PrivateNotificationManager {
@@ -64,7 +66,8 @@ public class PrivateNotificationManager {
     private final String pubKeyAsHex;
 
     private ECKey privateNotificationSigningKey;
-    private DecryptedMessageWithPubKey decryptedMessageWithPubKey;
+    @Nullable
+    private PrivateNotificationMessage privateNotificationMessage;
 
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -91,10 +94,9 @@ public class PrivateNotificationManager {
     }
 
     private void handleMessage(DecryptedMessageWithPubKey decryptedMessageWithPubKey, NodeAddress senderNodeAddress) {
-        this.decryptedMessageWithPubKey = decryptedMessageWithPubKey;
         NetworkEnvelope networkEnvelope = decryptedMessageWithPubKey.getNetworkEnvelope();
         if (networkEnvelope instanceof PrivateNotificationMessage) {
-            PrivateNotificationMessage privateNotificationMessage = (PrivateNotificationMessage) networkEnvelope;
+            privateNotificationMessage = (PrivateNotificationMessage) networkEnvelope;
             log.info("Received PrivateNotificationMessage from {} with uid={}",
                     senderNodeAddress, privateNotificationMessage.getUid());
             if (privateNotificationMessage.getSenderNodeAddress().equals(senderNodeAddress)) {
@@ -116,8 +118,11 @@ public class PrivateNotificationManager {
         return privateNotificationMessageProperty;
     }
 
-    public boolean sendPrivateNotificationMessageIfKeyIsValid(PrivateNotificationPayload privateNotification, PubKeyRing pubKeyRing, NodeAddress peersNodeAddress,
-                                                              String privKeyString, SendMailboxMessageListener sendMailboxMessageListener) {
+    public boolean sendPrivateNotificationMessageIfKeyIsValid(PrivateNotificationPayload privateNotification,
+                                                              PubKeyRing pubKeyRing,
+                                                              NodeAddress peersNodeAddress,
+                                                              String privKeyString,
+                                                              SendMailboxMessageListener sendMailboxMessageListener) {
         boolean isKeyValid = isKeyValid(privKeyString);
         if (isKeyValid) {
             signAndAddSignatureToPrivateNotificationMessage(privateNotification);
@@ -137,7 +142,9 @@ public class PrivateNotificationManager {
     }
 
     public void removePrivateNotification() {
-        mailboxMessageService.removeMailboxMsg(decryptedMessageWithPubKey);
+        if (privateNotificationMessage != null) {
+            mailboxMessageService.removeMailboxMsg(privateNotificationMessage);
+        }
     }
 
     private boolean isKeyValid(String privKeyString) {

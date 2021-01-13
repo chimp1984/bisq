@@ -32,7 +32,7 @@ import lombok.Value;
 @SuppressWarnings("ALL")
 @EqualsAndHashCode(callSuper = true)
 @Value
-public class RefreshTradeStateRequest extends TradeMessage implements MailboxMessage {
+public class RefreshTradeStateRequest extends TradeMailboxMessage {
     private final NodeAddress senderNodeAddress;
 
 
