@@ -18,7 +18,6 @@
 package bisq.core.trade.messages;
 
 import bisq.network.p2p.NodeAddress;
-import bisq.network.p2p.mailbox.MailboxMessage;
 
 import bisq.common.app.Version;
 
@@ -61,7 +60,8 @@ public final class PeerPublishedDelayedPayoutTxMessage extends TradeMailboxMessa
         return getNetworkEnvelopeBuilder().setPeerPublishedDelayedPayoutTxMessage(builder).build();
     }
 
-    public static PeerPublishedDelayedPayoutTxMessage fromProto(protobuf.PeerPublishedDelayedPayoutTxMessage proto, int messageVersion) {
+    public static PeerPublishedDelayedPayoutTxMessage fromProto(protobuf.PeerPublishedDelayedPayoutTxMessage proto,
+                                                                int messageVersion) {
         return new PeerPublishedDelayedPayoutTxMessage(messageVersion,
                 proto.getUid(),
                 proto.getTradeId(),
