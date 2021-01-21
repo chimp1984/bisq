@@ -513,7 +513,7 @@ public class BsqWalletService extends WalletService implements DaoStateListener 
 
     public Transaction getPreparedSendBsqTx(String receiverAddress, Coin receiverAmount)
             throws AddressFormatException, InsufficientBsqException, WalletException, TransactionVerificationException, BsqChangeBelowDustException {
-        return getPreparedSendTx(receiverAddress, receiverAmount, bsqCoinSelector, false);
+        return getPreparedSendTx(receiverAddress, receiverAmount, bsqCoinSelector);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////
@@ -522,21 +522,16 @@ public class BsqWalletService extends WalletService implements DaoStateListener 
 
     public Transaction getPreparedSendBtcTx(String receiverAddress, Coin receiverAmount)
             throws AddressFormatException, InsufficientBsqException, WalletException, TransactionVerificationException, BsqChangeBelowDustException {
-        return getPreparedSendTx(receiverAddress, receiverAmount, nonBsqCoinSelector, true);
+        return getPreparedSendTx(receiverAddress, receiverAmount, nonBsqCoinSelector);
     }
 
-    private Transaction getPreparedSendTx(String receiverAddress, Coin receiverAmount, CoinSelector coinSelector,
-                                          boolean allowSegwitOuput)
+    private Transaction getPreparedSendTx(String receiverAddress, Coin receiverAmount, CoinSelector coinSelector)
             throws AddressFormatException, InsufficientBsqException, WalletException, TransactionVerificationException, BsqChangeBelowDustException {
         daoKillSwitch.assertDaoIsNotDisabled();
         Transaction tx = new Transaction(params);
         checkArgument(Restrictions.isAboveDust(receiverAmount),
                 "The amount is too low (dust limit).");
-        if (allowSegwitOuput) {
-            tx.addOutput(receiverAmount, Address.fromString(params, receiverAddress));
-        } else {
-            tx.addOutput(receiverAmount, LegacyAddress.fromBase58(params, receiverAddress));
-        }
+        tx.addOutput(receiverAmount, Address.fromString(params, receiverAddress));
         SendRequest sendRequest = SendRequest.forTx(tx);
         sendRequest.fee = Coin.ZERO;
         sendRequest.feePerKb = Coin.ZERO;

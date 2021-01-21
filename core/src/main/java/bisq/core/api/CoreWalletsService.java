@@ -49,7 +49,6 @@ import bisq.common.util.Utilities;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.InsufficientMoneyException;
-import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionConfidence;
 import org.bitcoinj.crypto.KeyCrypterScrypt;
@@ -199,7 +198,7 @@ class CoreWalletsService {
         return bsqWalletService.getUnusedBsqAddressAsString();
     }
 
-    void sendBsq(String address,
+    void sendBsq(String addressStr,
                  String amount,
                  String txFeeRate,
                  TxBroadcaster.Callback callback) {
@@ -207,10 +206,10 @@ class CoreWalletsService {
         verifyEncryptedWalletIsUnlocked();
 
         try {
-            LegacyAddress legacyAddress = getValidBsqLegacyAddress(address);
+            Address address = getValidBsqAddress(addressStr);
             Coin receiverAmount = getValidTransferAmount(amount, bsqFormatter);
             Coin txFeePerVbyte = getTxFeeRateFromParamOrPreferenceOrFeeService(txFeeRate);
-            BsqTransferModel model = bsqTransferService.getBsqTransferModel(legacyAddress,
+            BsqTransferModel model = bsqTransferService.getBsqTransferModel(address,
                     receiverAmount,
                     txFeePerVbyte);
             log.info("Sending {} BSQ to {} with tx fee rate {} sats/byte.",
@@ -514,12 +513,12 @@ class CoreWalletsService {
                 lockedBalance.value);
     }
 
-    // Returns a LegacyAddress for the string, or a RuntimeException if invalid.
-    private LegacyAddress getValidBsqLegacyAddress(String address) {
+    // Returns an Address for the string, or a RuntimeException if invalid.
+    private Address getValidBsqAddress(String address) {
         try {
             return bsqFormatter.getAddressFromBsqAddress(address);
-        } catch (Throwable t) {
-            log.error("", t);
+        } catch (RuntimeException e) {
+            log.error("", e);
             throw new IllegalStateException(format("%s is not a valid bsq address", address));
         }
     }
