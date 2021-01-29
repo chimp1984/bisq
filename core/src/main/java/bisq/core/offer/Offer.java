@@ -67,7 +67,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 @Slf4j
-public class Offer implements NetworkPayload, PersistablePayload {
+public class Offer implements NetworkPayload, PersistablePayload, OfferBookEntry {
 
     // We allow max. 1 % difference between own offerPayload price calculation and takers calculation.
     // Market price might be different at maker's and takers side so we need a bit of tolerance.

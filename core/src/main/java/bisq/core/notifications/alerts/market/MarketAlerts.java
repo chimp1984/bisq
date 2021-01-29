@@ -25,6 +25,7 @@ import bisq.core.notifications.MobileMessage;
 import bisq.core.notifications.MobileMessageType;
 import bisq.core.notifications.MobileNotificationService;
 import bisq.core.offer.Offer;
+import bisq.core.offer.OfferBookEntry;
 import bisq.core.offer.OfferBookService;
 import bisq.core.offer.OfferPayload;
 import bisq.core.provider.price.MarketPrice;
@@ -72,12 +73,12 @@ public class MarketAlerts {
     public void onAllServicesInitialized() {
         offerBookService.addOfferBookChangedListener(new OfferBookService.OfferBookChangedListener() {
             @Override
-            public void onAdded(Offer offer) {
-                onOfferAdded(offer);
+            public void onAdded(OfferBookEntry offerBookEntry) {
+                OfferBookEntry.<Offer>resolveType(offerBookEntry).ifPresent(offer -> onOfferAdded(offer));
             }
 
             @Override
-            public void onRemoved(Offer offer) {
+            public void onRemoved(OfferBookEntry offerBookEntry) {
             }
         });
         applyFilterOnAllOffers();

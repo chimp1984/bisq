@@ -57,9 +57,9 @@ public class OfferBookService {
     private static final Logger log = LoggerFactory.getLogger(OfferBookService.class);
 
     public interface OfferBookChangedListener {
-        void onAdded(Offer offer);
+        void onAdded(OfferBookEntry offerBookEntry);
 
-        void onRemoved(Offer offer);
+        void onRemoved(OfferBookEntry offerBookEntry);
     }
 
     private final P2PService p2PService;
@@ -93,6 +93,10 @@ public class OfferBookService {
                         Offer offer = new Offer(offerPayload);
                         offer.setPriceFeedService(priceFeedService);
                         listener.onAdded(offer);
+                    } else if (protectedStorageEntry.getProtectedStoragePayload() instanceof AtomicSwapOfferPayload) {
+                        AtomicSwapOfferPayload offerPayload = (AtomicSwapOfferPayload) protectedStorageEntry.getProtectedStoragePayload();
+                        AtomicSwapOffer offer = new AtomicSwapOffer(offerPayload);
+                        listener.onAdded(offer);
                     }
                 }));
             }
@@ -116,12 +120,12 @@ public class OfferBookService {
                 public void onUpdatedDataReceived() {
                     addOfferBookChangedListener(new OfferBookChangedListener() {
                         @Override
-                        public void onAdded(Offer offer) {
+                        public void onAdded(OfferBookEntry offerBookEntry) {
                             doDumpStatistics();
                         }
 
                         @Override
-                        public void onRemoved(Offer offer) {
+                        public void onRemoved(OfferBookEntry offerBookEntry) {
                             doDumpStatistics();
                         }
                     });

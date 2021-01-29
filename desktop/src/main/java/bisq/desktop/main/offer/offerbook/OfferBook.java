@@ -19,6 +19,7 @@ package bisq.desktop.main.offer.offerbook;
 
 import bisq.core.filter.FilterManager;
 import bisq.core.offer.Offer;
+import bisq.core.offer.OfferBookEntry;
 import bisq.core.offer.OfferBookService;
 import bisq.core.trade.TradeManager;
 
@@ -64,41 +65,43 @@ public class OfferBook {
 
         offerBookService.addOfferBookChangedListener(new OfferBookService.OfferBookChangedListener() {
             @Override
-            public void onAdded(Offer offer) {
-                // We get onAdded called every time a new ProtectedStorageEntry is received.
-                // Mostly it is the same OfferPayload but the ProtectedStorageEntry is different.
-                // We filter here to only add new offers if the same offer (using equals) was not already added and it
-                // is not banned.
+            public void onAdded(OfferBookEntry offerBookEntry) {
+                OfferBookEntry.<Offer>resolveType(offerBookEntry).ifPresent(offer -> {
+                    // We get onAdded called every time a new ProtectedStorageEntry is received.
+                    // Mostly it is the same OfferPayload but the ProtectedStorageEntry is different.
+                    // We filter here to only add new offers if the same offer (using equals) was not already added and it
+                    // is not banned.
 
-                if (filterManager.isOfferIdBanned(offer.getId())) {
-                    log.debug("Ignored banned offer. ID={}", offer.getId());
-                    return;
-                }
-
-                boolean hasSameOffer = offerBookListItems.stream()
-                        .anyMatch(item -> item.getOffer().equals(offer));
-                if (!hasSameOffer) {
-                    OfferBookListItem offerBookListItem = new OfferBookListItem(offer);
-                    // We don't use the contains method as the equals method in Offer takes state and errorMessage into account.
-                    // If we have an offer with same ID we remove it and add the new offer as it might have a changed state.
-                    Optional<OfferBookListItem> candidateWithSameId = offerBookListItems.stream()
-                            .filter(item -> item.getOffer().getId().equals(offer.getId()))
-                            .findAny();
-                    if (candidateWithSameId.isPresent()) {
-                        log.warn("We had an old offer in the list with the same Offer ID. We remove the old one. " +
-                                "old offerBookListItem={}, new offerBookListItem={}", candidateWithSameId.get(), offerBookListItem);
-                        offerBookListItems.remove(candidateWithSameId.get());
+                    if (filterManager.isOfferIdBanned(offer.getId())) {
+                        log.debug("Ignored banned offer. ID={}", offer.getId());
+                        return;
                     }
 
-                    offerBookListItems.add(offerBookListItem);
-                } else {
-                    log.debug("We have the exact same offer already in our list and ignore the onAdded call. ID={}", offer.getId());
-                }
+                    boolean hasSameOffer = offerBookListItems.stream()
+                            .anyMatch(item -> item.getOffer().equals(offer));
+                    if (!hasSameOffer) {
+                        OfferBookListItem offerBookListItem = new OfferBookListItem(offer);
+                        // We don't use the contains method as the equals method in Offer takes state and errorMessage into account.
+                        // If we have an offer with same ID we remove it and add the new offer as it might have a changed state.
+                        Optional<OfferBookListItem> candidateWithSameId = offerBookListItems.stream()
+                                .filter(item -> item.getOffer().getId().equals(offer.getId()))
+                                .findAny();
+                        if (candidateWithSameId.isPresent()) {
+                            log.warn("We had an old offer in the list with the same Offer ID. We remove the old one. " +
+                                    "old offerBookListItem={}, new offerBookListItem={}", candidateWithSameId.get(), offerBookListItem);
+                            offerBookListItems.remove(candidateWithSameId.get());
+                        }
+
+                        offerBookListItems.add(offerBookListItem);
+                    } else {
+                        log.debug("We have the exact same offer already in our list and ignore the onAdded call. ID={}", offer.getId());
+                    }
+                });
             }
 
             @Override
-            public void onRemoved(Offer offer) {
-                removeOffer(offer, tradeManager);
+            public void onRemoved(OfferBookEntry offerBookEntry) {
+                OfferBookEntry.<Offer>resolveType(offerBookEntry).ifPresent(offer -> removeOffer(offer, tradeManager));
             }
         });
     }
