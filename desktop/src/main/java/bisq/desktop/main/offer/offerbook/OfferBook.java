@@ -18,6 +18,7 @@
 package bisq.desktop.main.offer.offerbook;
 
 import bisq.core.filter.FilterManager;
+import bisq.core.offer.AtomicSwapOffer;
 import bisq.core.offer.Offer;
 import bisq.core.offer.OfferBookEntry;
 import bisq.core.offer.OfferBookService;
@@ -97,11 +98,19 @@ public class OfferBook {
                         log.debug("We have the exact same offer already in our list and ignore the onAdded call. ID={}", offer.getId());
                     }
                 });
+
+                OfferBookEntry.<AtomicSwapOffer>resolveType(offerBookEntry).ifPresent(atomicSwapOffer -> {
+                    //TODO
+                });
             }
 
             @Override
             public void onRemoved(OfferBookEntry offerBookEntry) {
                 OfferBookEntry.<Offer>resolveType(offerBookEntry).ifPresent(offer -> removeOffer(offer, tradeManager));
+
+                OfferBookEntry.<AtomicSwapOffer>resolveType(offerBookEntry).ifPresent(atomicSwapOffer -> {
+                    //TODO
+                });
             }
         });
     }
