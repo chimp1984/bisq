@@ -577,6 +577,14 @@ message MailboxMessageList {
     repeated MailboxItem mailbox_item = 1;
 }
 
+message RemovedPayloadsMap {
+    map<string, uint64> date_by_hashes = 1;
+}
+
+message IgnoredMailboxMap {
+    map<string, uint64> data = 1;
+}
+
 message MailboxItem {
     ProtectedMailboxStorageEntry protected_mailbox_storage_entry = 1;
     DecryptedMessageWithPubKey decrypted_message_with_pub_key = 2;
@@ -956,6 +964,7 @@ message PaymentAccountPayload {
         TransferwiseAccountPayload Transferwise_account_payload = 29;
         AustraliaPayidPayload australia_payid_payload = 30;
         AmazonGiftCardAccountPayload amazon_gift_card_account_payload = 31;
+        CashByMailAccountPayload cash_by_mail_account_payload = 32;
     }
     map<string, string> exclude_from_json_data = 15;
 }
@@ -1157,6 +1166,12 @@ message F2FAccountPayload {
     string extra_info = 3;
 }
 
+message CashByMailAccountPayload {
+    string postal_address = 1;
+    string contact = 2;
+    string extra_info = 3;
+}
+
 message PromptPayAccountPayload {
     string prompt_pay_id = 1;
 }
@@ -1215,6 +1230,8 @@ message PersistableEnvelope {
         RefundDisputeList refund_dispute_list = 30;
         TradeStatistics3Store trade_statistics3_store = 31;
         MailboxMessageList mailbox_message_list = 32;
+        IgnoredMailboxMap ignored_mailbox_map = 33;
+        RemovedPayloadsMap removed_payloads_map = 34;
     }
 }
 
