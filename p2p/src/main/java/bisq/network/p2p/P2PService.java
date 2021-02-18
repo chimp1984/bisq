@@ -251,15 +251,10 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     public void onTorNodeReady() {
         socks5ProxyProvider.setSocks5ProxyInternal(networkNode);
 
-        boolean seedNodesAvailable = requestDataManager.requestPreliminaryData();
+        requestDataManager.requestPreliminaryData();
 
         keepAliveManager.start();
         p2pServiceListeners.forEach(SetupListener::onTorNodeReady);
-
-        if (!seedNodesAvailable) {
-            isBootstrapped = true;
-            p2pServiceListeners.forEach(P2PServiceListener::onNoSeedNodeAvailable);
-        }
     }
 
     @Override
@@ -320,16 +315,24 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
             // We don't use a listener at mailboxMessageService as we require the correct
             // order of execution. The p2pServiceListeners must be called after
             // mailboxMessageService.onUpdatedDataReceived.
-            mailboxMessageService.onUpdatedDataReceived();
+            mailboxMessageService.onBootstrapped();
 
             p2pServiceListeners.forEach(P2PServiceListener::onUpdatedDataReceived);
             p2PDataStorage.onBootstrapComplete();
         }
     }
 
+    // Called once we have tried all seed nodes addresses but failed to get any response or
+    // if there are no remaining seed nodes.
     @Override
     public void onNoSeedNodeAvailable() {
-        p2pServiceListeners.forEach(P2PServiceListener::onNoSeedNodeAvailable);
+        if (!isBootstrapped) {
+            isBootstrapped = true;
+            mailboxMessageService.onBootstrapped();
+
+            p2pServiceListeners.forEach(P2PServiceListener::onNoSeedNodeAvailable);
+            p2PDataStorage.onBootstrapComplete();
+        }
     }
 
     @Override
