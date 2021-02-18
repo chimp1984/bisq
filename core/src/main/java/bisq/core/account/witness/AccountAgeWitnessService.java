@@ -203,18 +203,17 @@ public class AccountAgeWitnessService {
                 .forEach(this::addToMap);
 
         if (p2PService.isBootstrapped()) {
-            onBootStrapped();
+            onBootstrapped();
         } else {
             p2PService.addP2PServiceListener(new BootstrapListener() {
-                @Override
-                public void onUpdatedDataReceived() {
-                    onBootStrapped();
+                public void onBootstrapped() {
+                    AccountAgeWitnessService.this.onBootstrapped();
                 }
             });
         }
     }
 
-    private void onBootStrapped() {
+    private void onBootstrapped() {
         republishAllFiatAccounts();
         signAndPublishSameNameAccounts();
     }

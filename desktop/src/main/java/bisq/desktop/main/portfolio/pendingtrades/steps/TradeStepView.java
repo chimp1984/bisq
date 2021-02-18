@@ -203,7 +203,7 @@ public abstract class TradeStepView extends AnchorPane {
         } else {
             bootstrapListener = new BootstrapListener() {
                 @Override
-                public void onUpdatedDataReceived() {
+                public void onBootstrapped() {
                     registerSubscriptions();
                 }
             };

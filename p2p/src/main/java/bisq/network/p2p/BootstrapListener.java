@@ -17,8 +17,19 @@
 
 package bisq.network.p2p;
 
-
+// For clients which are only interested in the state once the p2p network is bootstrapped,
+// which is when the onUpdatedDataReceived or onNoSeedNodeAvailable was called.
 public abstract class BootstrapListener implements P2PServiceListener {
+    public abstract void onBootstrapped();
+
+    @Override
+    public void onNoSeedNodeAvailable() {
+    }
+
+    @Override
+    public void onUpdatedDataReceived() {
+    }
+
     @Override
     public void onTorNodeReady() {
     }
@@ -28,25 +39,11 @@ public abstract class BootstrapListener implements P2PServiceListener {
     }
 
     @Override
-    public void onNoSeedNodeAvailable() {
-    }
-
-    @Override
     public void onNoPeersAvailable() {
-    }
-
-    @Override
-    public void onSetupFailed(Throwable throwable) {
     }
 
     @Override
     public void onDataReceived() {
     }
-
-    @Override
-    public abstract void onUpdatedDataReceived();
-
-    @Override
-    public void onRequestCustomBridges() {
-    }
 }
+

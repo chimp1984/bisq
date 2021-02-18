@@ -66,18 +66,18 @@ public class TriggerPriceService {
 
     public void onAllServicesInitialized() {
         if (p2PService.isBootstrapped()) {
-            onBootstrapComplete();
+            onBootstrapped();
         } else {
             p2PService.addP2PServiceListener(new BootstrapListener() {
                 @Override
-                public void onUpdatedDataReceived() {
-                    onBootstrapComplete();
+                public void onBootstrapped() {
+                    TriggerPriceService.this.onBootstrapped();
                 }
             });
         }
     }
 
-    private void onBootstrapComplete() {
+    private void onBootstrapped() {
         openOfferManager.getObservableList().addListener((ListChangeListener<OpenOffer>) c -> {
             c.next();
             if (c.wasAdded()) {

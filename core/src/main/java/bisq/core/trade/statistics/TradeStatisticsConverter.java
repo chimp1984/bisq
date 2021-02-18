@@ -19,8 +19,8 @@ package bisq.core.trade.statistics;
 
 import bisq.core.offer.availability.DisputeAgentSelection;
 
-import bisq.network.p2p.BootstrapListener;
 import bisq.network.p2p.P2PService;
+import bisq.network.p2p.P2PServiceListener;
 import bisq.network.p2p.storage.P2PDataStorage;
 import bisq.network.p2p.storage.payload.PersistableNetworkPayload;
 import bisq.network.p2p.storage.persistence.AppendOnlyDataStoreService;
@@ -64,8 +64,7 @@ public class TradeStatisticsConverter {
         File tradeStatistics2Store = new File(storageDir, "TradeStatistics2Store");
         appendOnlyDataStoreService.addService(tradeStatistics2StorageService);
 
-        p2PService.addP2PServiceListener(new BootstrapListener() {
-
+        p2PService.addP2PServiceListener(new P2PServiceListener() {
             @Override
             public void onTorNodeReady() {
                 if (!tradeStatistics2Store.exists()) {
@@ -92,6 +91,22 @@ public class TradeStatisticsConverter {
                         log.error(e.toString());
                     }
                 });
+            }
+
+            @Override
+            public void onHiddenServicePublished() {
+            }
+
+            @Override
+            public void onDataReceived() {
+            }
+
+            @Override
+            public void onNoSeedNodeAvailable() {
+            }
+
+            @Override
+            public void onNoPeersAvailable() {
             }
 
             @Override

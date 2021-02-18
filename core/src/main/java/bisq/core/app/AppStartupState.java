@@ -57,7 +57,7 @@ public class AppStartupState {
 
         p2PService.addP2PServiceListener(new BootstrapListener() {
             @Override
-            public void onUpdatedDataReceived() {
+            public void onBootstrapped() {
                 updatedDataReceived.set(true);
             }
         });

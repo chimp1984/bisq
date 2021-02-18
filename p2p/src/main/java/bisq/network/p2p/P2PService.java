@@ -310,15 +310,8 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
 
     @Override
     public void onUpdatedDataReceived() {
-        if (!isBootstrapped) {
-            isBootstrapped = true;
-            // We don't use a listener at mailboxMessageService as we require the correct
-            // order of execution. The p2pServiceListeners must be called after
-            // mailboxMessageService.onUpdatedDataReceived.
-            mailboxMessageService.onBootstrapped();
-
+        if (applyBootstrappedState()) {
             p2pServiceListeners.forEach(P2PServiceListener::onUpdatedDataReceived);
-            p2PDataStorage.onBootstrapped();
         }
     }
 
@@ -326,13 +319,28 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
     // if there are no remaining seed nodes.
     @Override
     public void onNoSeedNodeAvailable() {
-        if (!isBootstrapped) {
-            isBootstrapped = true;
-            mailboxMessageService.onBootstrapped();
-
+        if (applyBootstrappedState()) {
             p2pServiceListeners.forEach(P2PServiceListener::onNoSeedNodeAvailable);
-            p2PDataStorage.onBootstrapped();
         }
+    }
+
+    protected boolean applyBootstrappedState() {
+        if (isBootstrapped) {
+            return false;
+        }
+
+        isBootstrapped = true;
+        // We don't use a listener at mailboxMessageService as we require the correct
+        // order of execution. The p2pServiceListeners must be called after
+        // mailboxMessageService.onUpdatedDataReceived.
+        mailboxMessageService.onBootstrapped();
+        p2PDataStorage.onBootstrapped();
+
+        p2pServiceListeners.stream()
+                .filter(e -> e instanceof BootstrapListener)
+                .map(e -> (BootstrapListener) e)
+                .forEach(BootstrapListener::onBootstrapped);
+        return true;
     }
 
     @Override

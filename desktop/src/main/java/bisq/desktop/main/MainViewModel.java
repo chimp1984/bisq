@@ -473,7 +473,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
         } else {
             p2PService.addP2PServiceListener(new BootstrapListener() {
                 @Override
-                public void onUpdatedDataReceived() {
+                public void onBootstrapped() {
                     setupInvalidOpenOffersHandler();
                 }
             });
@@ -603,7 +603,7 @@ public class MainViewModel implements ViewModel, BisqSetup.BisqSetupListener {
             } else {
                 p2PService.addP2PServiceListener(new BootstrapListener() {
                     @Override
-                    public void onUpdatedDataReceived() {
+                    public void onBootstrapped() {
                         accountAgeWitnessService.publishMyAccountAgeWitness(aliPayAccount.getPaymentAccountPayload());
                     }
                 });

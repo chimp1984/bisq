@@ -113,7 +113,7 @@ public class OfferBookService {
         if (dumpStatistics) {
             p2PService.addP2PServiceListener(new BootstrapListener() {
                 @Override
-                public void onUpdatedDataReceived() {
+                public void onBootstrapped() {
                     addOfferBookChangedListener(new OfferBookChangedListener() {
                         @Override
                         public void onAdded(Offer offer) {
