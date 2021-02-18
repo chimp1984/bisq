@@ -160,5 +160,4 @@ public abstract class BisqDefaultCoinSelector implements CoinSelector {
             return aHash.compareTo(bHash);
         });
     }
-
 }
