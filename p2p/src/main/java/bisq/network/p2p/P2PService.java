@@ -318,7 +318,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
             mailboxMessageService.onBootstrapped();
 
             p2pServiceListeners.forEach(P2PServiceListener::onUpdatedDataReceived);
-            p2PDataStorage.onBootstrapComplete();
+            p2PDataStorage.onBootstrapped();
         }
     }
 
@@ -331,7 +331,7 @@ public class P2PService implements SetupListener, MessageListener, ConnectionLis
             mailboxMessageService.onBootstrapped();
 
             p2pServiceListeners.forEach(P2PServiceListener::onNoSeedNodeAvailable);
-            p2PDataStorage.onBootstrapComplete();
+            p2PDataStorage.onBootstrapped();
         }
     }
 
