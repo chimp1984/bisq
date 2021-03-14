@@ -133,12 +133,6 @@ public class InputTextField extends JFXTextField {
         }
     }
 
-    public void refreshValidation() {
-        if (validator != null) {
-            this.validationResult.set(validator.validate(getText()));
-        }
-    }
-
     ///////////////////////////////////////////////////////////////////////////////////////////
     // Getters
     ///////////////////////////////////////////////////////////////////////////////////////////
