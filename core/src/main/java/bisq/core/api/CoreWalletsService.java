@@ -83,7 +83,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.Nullable;
 
-import static bisq.common.config.BaseCurrencyNetwork.BTC_DAO_REGTEST;
 import static bisq.core.btc.wallet.Restrictions.getMinNonDustOutput;
 import static bisq.core.util.ParsingUtils.parseToCoin;
 import static java.lang.String.format;
@@ -550,8 +549,8 @@ class CoreWalletsService {
             throw new IllegalStateException("server is not fully initialized");
     }
 
-    // Returns a LegacyAddress for the string, or a RuntimeException if invalid.
-    LegacyAddress getValidBsqLegacyAddress(String address) {
+    // Returns a Address for the string, or a RuntimeException if invalid.
+    Address getValidBsqLegacyAddress(String address) {
         try {
             return bsqFormatter.getAddressFromBsqAddress(address);
         } catch (Throwable t) {
@@ -579,7 +578,7 @@ class CoreWalletsService {
         if (btcWalletService.getAesKey() == null || bsqWalletService.getAesKey() == null) {
             KeyParameter aesKey = new KeyParameter(tempAesKey.getKey());
             walletsManager.setAesKey(aesKey);
-            walletsSetup.getWalletConfig().maybeAddSegwitKeychain(walletsSetup.getWalletConfig().btcWallet(), aesKey);
+            walletsManager.maybeAddSegwitKeychains(aesKey);
         }
     }
 
